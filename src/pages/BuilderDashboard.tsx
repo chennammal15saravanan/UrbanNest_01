@@ -9,7 +9,12 @@ import { Modal, Button, Form } from 'react-bootstrap';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { createClient } from '@supabase/supabase-js';
 import Projects from './Projects';
+import ProjectDetails from './ProjectDetails';
 import EditProject from './EditProject';
+import ViewProject from './ViewProject'; // Import the new ViewProject component
+import ErrorBoundary from '../pages/ErrorBoundary';
+
+
 
 // Initialize Supabase client (replace with your Supabase credentials)
 const supabaseUrl = 'https://ddxaptcwkmwcbwovdrlr.supabase.co'; // Replace with your actual Project URL
@@ -462,11 +467,14 @@ export default function BuilderDashboard() {
           <Routes>
             <Route path="/" element={<Overview />} />
             <Route path="/projects" element={<Projects />} />
+            <Route path="/projects/:id" element={<ProjectDetails />} />
             <Route path="/projects/:id/edit" element={<EditProject />} />
+            <Route path="/projects/:id/view" element={<ViewProject />} /> {/* New route for view */}
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/help" element={<Help />} />
-            {/* Redirect to projects if no match */}
             <Route path="*" element={<Navigate to="/builder/dashboard/projects" replace />} />
+            <Route path="/projects/:id/edit" element={<ErrorBoundary><EditProject /></ErrorBoundary>} />
+            <Route path="/projects/:id/view" element={<ErrorBoundary><ViewProject /></ErrorBoundary>} />
           </Routes>
         </main>
 

@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { FileText,Plus } from 'lucide-react';
+import { 
+  FileText,
+  Plus 
+} from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { createClient } from '@supabase/supabase-js';
 import { useNavigate } from 'react-router-dom';
@@ -122,7 +125,7 @@ const Projects = () => {
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <button 
                     className="text-blue-600 hover:text-blue-900 mr-3"
-                    onClick={() => navigate(`/builder/dashboard/projects/${project.id}`)}
+                    onClick={() => navigate(`/builder/dashboard/projects/${project.id}/view`)}
                   >
                     View
                   </button>

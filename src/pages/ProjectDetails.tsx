@@ -45,7 +45,7 @@ const ProjectDetails: React.FC = () => {
         setProject(data);
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        console.error('Error fetching project:', errorMessage);
+        //console.error('Error fetching project:', errorMessage);
         setError(`Failed to fetch project: ${errorMessage}`);
       } finally {
         setLoading(false);

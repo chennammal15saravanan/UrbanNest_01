@@ -328,10 +328,10 @@ export default function BuilderDashboard() {
       navigate('/builder/dashboard/projects');
     } catch (error) {
       if (error instanceof Error) {
-        console.error('Error saving project:', error.message, (error as any).details || error);
+        //console.error('Error saving project:', error.message, (error as any).details || error);
         setError(`Failed to save project: ${error.message}`);
       } else {
-        console.error('Error saving project:', error);
+        //console.error('Error saving project:', error);
         setError('Failed to save project: An unknown error occurred');
       }
     }

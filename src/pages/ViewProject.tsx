@@ -87,7 +87,7 @@ const ViewProject: React.FC = () => {
 
         setProject({ ...data, phases: updatedPhases } as Project);
       } catch (error) {
-        console.error('Error fetching project:', error);
+        //console.error('Error fetching project:', error);
         setError(error instanceof Error ? error.message : 'Unknown error');
       } finally {
         setLoading(false);

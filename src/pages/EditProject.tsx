@@ -89,7 +89,7 @@ const EditProject: React.FC = () => {
   
         setProject({ ...data, phases: updatedPhases } as Project);
       } catch (error) {
-        console.error('Error fetching project:', error);
+        //console.error('Error fetching project:', error);
         setError(error instanceof Error ? error.message : 'Unknown error');
       } finally {
         setLoading(false);
@@ -119,7 +119,7 @@ const EditProject: React.FC = () => {
 
       navigate('/builder/dashboard/projects');
     } catch (error) {
-      console.error('Error updating project:', error);
+      //console.error('Error updating project:', error);
       setError(error instanceof Error ? error.message : 'Unknown error');
     }
   };
@@ -275,7 +275,7 @@ const EditProject: React.FC = () => {
                           const attachmentUrl = `https://ddxaptcwkmwcbwovdrlr.supabase.co/storage/v1/object/public/project_attachments/${fileName}`;
                           handlePhaseChange(currentPhase, index, 'attachment', attachmentUrl);
                         } catch (error) {
-                          console.error('Error uploading file:', error);
+                          //console.error('Error uploading file:', error);
                           setError('Failed to upload file: ' + (error instanceof Error ? error.message : 'Unknown error'));
                         }
                       }

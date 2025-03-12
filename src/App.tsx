@@ -31,29 +31,31 @@ function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/builder/signup" element={<BuilderSignup />} />
           <Route path="/customer/signup" element={<CustomerSignup />} />
-          <Route path="/builder/dashboard/*" element={
-            <ProtectedRoute>
-              <BuilderDashboard />
-            </ProtectedRoute>
-          } />
+          <Route
+            path="/builder/dashboard/*"
+            element={
+              <ProtectedRoute>
+                <BuilderDashboard />
+              </ProtectedRoute>
+            }
+          />
         </Routes>
       </div>
     </Router>
   );
 }
 
-// Protected route component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
-  
+
   if (loading) {
     return <div className="flex justify-center items-center h-screen">Loading...</div>;
   }
-  
+
   if (!user) {
     return <Navigate to="/" replace />;
   }
-  
+
   return <>{children}</>;
 }
 

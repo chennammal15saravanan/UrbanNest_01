@@ -3,9 +3,26 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { createClient } from '@supabase/supabase-js';
 import { useAuth } from '../contexts/AuthContext';
 
-const supabaseUrl = 'https://ddxaptcwkmwcbwovdrlr.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkeGFwdGN3a213Y2J3b3ZkcmxyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA5Nzc1NzgsImV4cCI6MjA1NjU1MzU3OH0.BWCikX8MvBWSrXkSIwgVA28RXDq1WSuYs4Me_JNFR5k';
+const supabaseUrl = 'https://mddprsymtcgvybenatwg.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1kZHByc3ltdGNndnliZW5hdHdnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDEwOTY5MzQsImV4cCI6MjA1NjY3MjkzNH0.hawSQGzxjV0bKG7PqP6BmpJtLmW89BSsj8AeButHrGQ';
 const supabase = createClient(supabaseUrl, supabaseKey);
+
+interface Phase {
+  id: number;
+  project_id: number;
+  phase_name: string;
+  enabled: boolean;
+  percentage: number;
+  items: Array<{ item: string; cost: number | null; attachment: string | null; status: string; completion: string; comments: string }>;
+}
+
+interface Floor {
+  id: number;
+  project_id: number;
+  floor_number: number;
+  num_apartments: number;
+  apartment_types: string[];
+}
 
 interface Project {
   id: number;
@@ -13,8 +30,10 @@ interface Project {
   project_name: string;
   start_date: string | null;
   end_date: string | null;
+  total_sq_feet: number | null;
+  construction_type: string | null;
+  num_floors: number | null;
   estimated_cost: number | null;
-  phases: Record<string, { items: Array<{ item: string; cost: number | null; attachment: string | null; status: string; completion: string; comments: string }> }>;
   created_at: string;
 }
 
@@ -23,37 +42,66 @@ const ProjectDetails: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [project, setProject] = useState<Project | null>(null);
+  const [phases, setPhases] = useState<Phase[]>([]);
+  const [floors, setFloors] = useState<Floor[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentPhase, setCurrentPhase] = useState<string>('Land & Pre-Construction');
 
   useEffect(() => {
-    const fetchProject = async () => {
+    const fetchProjectAndPhases = async () => {
       try {
         if (!user || !user.id || !id) {
           throw new Error('User not authenticated or project ID missing');
         }
 
-        const { data, error } = await supabase
+        // Fetch project details
+        const { data: projectData, error: projectError } = await supabase
           .from('project_users')
           .select('*')
           .eq('id', id)
           .eq('user_id', user.id)
           .single();
 
-        if (error) throw error;
+        if (projectError) throw projectError;
 
-        setProject(data);
+        if (!projectData) throw new Error('Project not found');
+
+        setProject(projectData);
+
+        // Fetch phases
+        const { data: phasesData, error: phasesError } = await supabase
+          .from('project_phases')
+          .select('*')
+          .eq('project_id', projectData.id);
+
+        if (phasesError) throw phasesError;
+
+        setPhases(phasesData || []);
+
+        // Fetch floors
+        const { data: floorsData, error: floorsError } = await supabase
+          .from('project_floors')
+          .select('*')
+          .eq('project_id', projectData.id);
+
+        if (floorsError) throw floorsError;
+
+        setFloors(floorsData || []);
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        //console.error('Error fetching project:', errorMessage);
         setError(`Failed to fetch project: ${errorMessage}`);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchProject();
+    fetchProjectAndPhases();
   }, [user, id]);
+
+  const handlePhaseChange = (phaseName: string) => {
+    setCurrentPhase(phaseName);
+  };
 
   if (loading) {
     return <div className="p-6">Loading project details...</div>;
@@ -63,28 +111,74 @@ const ProjectDetails: React.FC = () => {
     return <div className="p-6 text-red-600">{error || 'Project not found'}</div>;
   }
 
-  const currentPhase = 'landPreConstruction'; // Default to Land & Pre-Construction for this example
-  const phaseItems = project.phases[currentPhase]?.items || [];
+  const currentPhaseData = phases.find((phase) => phase.phase_name === currentPhase);
+  const phaseItems = currentPhaseData?.items || [];
 
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
+      {/* Project Overview */}
+      <div className="bg-white rounded-lg shadow p-6 mb-6">
+        <h2 className="text-2xl font-bold text-gray-900 mb-4">{project.project_name}</h2>
+        <p className="text-sm text-gray-600">Start Date: {project.start_date || 'Not set'}</p>
+        <p className="text-sm text-gray-600">End Date: {project.end_date || 'Not set'}</p>
+        <p className="text-sm text-gray-600">
+          Estimated Cost: {project.estimated_cost ? `₹${project.estimated_cost.toLocaleString()}` : 'Not set'}
+        </p>
+        <p className="text-sm text-gray-600">Construction Type: {project.construction_type || 'Not set'}</p>
+        <p className="text-sm text-gray-600">
+          Total Sq. Feet: {project.total_sq_feet ? project.total_sq_feet.toLocaleString() : 'Not set'}
+        </p>
+        <p className="text-sm text-gray-600">Number of Floors: {project.num_floors || 'Not set'}</p>
+      </div>
+
+      {/* Floor Details */}
+      {floors.length > 0 && (
+        <div className="bg-white rounded-lg shadow p-6 mb-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Floor Details</h3>
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="bg-gray-200 text-gray-700">
+                <th className="px-4 py-2 text-left">Floor Number</th>
+                <th className="px-4 py-2 text-left">Number of Apartments</th>
+                <th className="px-4 py-2 text-left">Apartment Types</th>
+              </tr>
+            </thead>
+            <tbody>
+              {floors.map((floor) => (
+                <tr key={floor.id} className="border-b">
+                  <td className="px-4 py-2">{floor.floor_number}</td>
+                  <td className="px-4 py-2">{floor.num_apartments || 'Not set'}</td>
+                  <td className="px-4 py-2">{floor.apartment_types?.join(', ') || 'Not set'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
       {/* Phase Navigation Tabs */}
-      <div className="flex space-x-2 mb-4">
-        {['Land & Pre-Construction', 'Foundation & Structural', 'Superstructure', 'Internal & External Works', 'Final Installations', 'Testing & Quality', 'Handover'].map((phase, index) => (
+      <div className="flex space-x-2 mb-4 flex-wrap">
+        {phases.map((phase, index) => (
           <button
-            key={phase}
-            className={`px-4 py-2 rounded-md ${index === 0 ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'}`}
-            onClick={() => console.log(`Switch to ${phase}`)} // Implement phase switching logic here
+            key={phase.id}
+            className={`px-4 py-2 rounded-md mb-2 ${
+              phase.phase_name === currentPhase ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
+            }`}
+            onClick={() => handlePhaseChange(phase.phase_name)}
           >
-            {index + 1}. {phase}
+            {index + 1}. {phase.phase_name}
           </button>
         ))}
       </div>
 
-      {/* Project Details Card */}
+      {/* Phase Details */}
       <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-2xl font-bold text-blue-600 mb-4">1. Land & Pre-Construction Phase</h2>
-        <h3 className="text-lg font-medium text-blue-500 mb-2">a) Land Acquisition & Verification</h3>
+        <h2 className="text-2xl font-bold text-blue-600 mb-4">
+          {phases.findIndex((phase) => phase.phase_name === currentPhase) + 1}. {currentPhase} Phase
+        </h2>
+        <h3 className="text-lg font-medium text-blue-500 mb-2">
+          {currentPhase === 'Land & Pre-Construction' ? 'a) Land Acquisition & Verification' : 'Details'}
+        </h3>
 
         <table className="w-full border-collapse">
           <thead>

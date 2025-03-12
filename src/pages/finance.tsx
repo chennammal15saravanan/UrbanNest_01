@@ -12,7 +12,8 @@ interface FinanceEntry {
   comments: string;
 }
 
-const FinanceEntryPage = () => {
+const Finance = () => {
+  const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [financeEntries, setFinanceEntries] = useState<FinanceEntry[]>([]);
   const [formData, setFormData] = useState({
@@ -231,4 +232,4 @@ const FinanceEntryPage = () => {
   );
 };
 
-export default FinanceEntryPage;
+export default Finance;

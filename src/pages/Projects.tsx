@@ -1,14 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  FileText,
-  Plus 
-} from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
+import React, { useEffect, useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { createClient } from '@supabase/supabase-js';
-import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
-const supabaseUrl = 'https://ddxaptcwkmwcbwovdrlr.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkeGFwdGN3a213Y2J3b3ZkcmxyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA5Nzc1NzgsImV4cCI6MjA1NjU1MzU3OH0.BWCikX8MvBWSrXkSIwgVA28RXDq1WSuYs4Me_JNFR5k';
+const supabaseUrl = 'https://mddprsymtcgvybenatwg.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1kZHByc3ltdGNndnliZW5hdHdnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDEwOTY5MzQsImV4cCI6MjA1NjY3MjkzNH0.hawSQGzxjV0bKG7PqP6BmpJtLmW89BSsj8AeButHrGQ';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 interface Project {
@@ -17,17 +13,21 @@ interface Project {
   project_name: string;
   start_date: string | null;
   end_date: string | null;
+  total_sq_feet: number | null;
+  construction_type: string | null;
+  num_floors: number | null;
+  floors: Array<{ floorNumber: number; numApartments: number; apartmentTypes: string[] }> | null;
   estimated_cost: number | null;
-  phases: Record<string, { items: Array<{ item: string; cost: number | null; attachment: string | null; status: string; completion: string; comments: string }> }> | null;
+  phases: Record<string, { enabled: boolean; percentage: string; items: Array<{ item: string; cost: number | null; attachment: string | null; status: string; completion: string; comments: string }> }>;
   created_at: string;
 }
 
-const Projects = () => {
+const Projects: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -36,22 +36,21 @@ const Projects = () => {
           throw new Error('User not authenticated');
         }
 
+        console.log('Fetching projects for user:', user.id);
         const { data, error } = await supabase
           .from('project_users')
           .select('*')
-          .eq('user_id', user.id);
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
 
         if (error) throw error;
 
+        console.log('Projects fetched:', data);
         setProjects(data || []);
       } catch (error) {
-        if (error instanceof Error) {
-          console.error('Error fetching projects:', error.message);
-          setError(`Failed to fetch projects: ${error.message}`);
-        } else {
-          console.error('Error fetching projects:', error);
-          setError('Failed to fetch projects');
-        }
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        console.error('Fetch projects error:', error);
+        setError(`Failed to fetch projects: ${errorMessage}`);
       } finally {
         setLoading(false);
       }
@@ -59,6 +58,17 @@ const Projects = () => {
 
     fetchProjects();
   }, [user]);
+
+  const handleProjectClick = (projectId: number) => {
+    console.log('Navigating to project details:', projectId);
+    navigate(`/builder/dashboard/projects/${projectId}`);
+  };
+
+  const handleEditClick = (projectId: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    console.log('Edit clicked for project:', projectId);
+    navigate(`/builder/dashboard/projects/edit/${projectId}`);
+  };
 
   if (loading) {
     return <div className="p-6">Loading projects...</div>;
@@ -69,78 +79,83 @@ const Projects = () => {
   }
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">My Projects</h2>
-        <button 
-          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md flex items-center"
-          onClick={() => navigate('/builder/dashboard/new-project')}
-        >
-          <Plus className="w-5 h-5 mr-2" />
-          New Project
-        </button>
-      </div>
-      
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Project Name</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start Date</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">End Date</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estimated Cost</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {projects.map((project) => (
-              <tr key={project.id}>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900">{project.project_name}</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-500">
-                    {project.start_date ? new Date(project.start_date).toLocaleDateString() : 'N/A'}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-500">
-                    {project.end_date ? new Date(project.end_date).toLocaleDateString() : 'N/A'}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {project.estimated_cost ? `₹${project.estimated_cost.toLocaleString()}` : 'N/A'}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                    ${project.phases?.landPreConstruction?.items?.some(item => item.status === 'Completed') ? 'bg-green-100 text-green-800' : 
-                      project.phases?.landPreConstruction?.items?.some(item => item.status === 'In Progress') ? 'bg-blue-100 text-blue-800' : 
-                      'bg-yellow-100 text-yellow-800'}`}>
-                    {project.phases?.landPreConstruction?.items?.some(item => item.status === 'Completed') ? 'Completed' : 
-                      project.phases?.landPreConstruction?.items?.some(item => item.status === 'In Progress') ? 'In Progress' : 
-                      'Planning'}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <button 
-                    className="text-blue-600 hover:text-blue-900 mr-3"
-                    onClick={() => navigate(`/builder/dashboard/projects/${project.id}/view`)}
-                  >
-                    View
-                  </button>
-                  <button 
-                    className="text-blue-600 hover:text-blue-900"
-                    onClick={() => navigate(`/builder/dashboard/projects/${project.id}/edit`)}
-                  >
-                    Edit
-                  </button>
-                </td>
+    <div className="p-6 bg-gray-100 min-h-screen">
+      <h2 className="text-2xl font-bold mb-6">Projects</h2>
+      {projects.length === 0 ? (
+        <p className="text-gray-600">No projects found. Create a new project to get started!</p>
+      ) : (
+        <div className="bg-white rounded-lg shadow overflow-x-auto">
+          <table className="min-w-full border-collapse">
+            <thead>
+              <tr className="bg-gray-200 text-gray-700">
+                <th className="px-4 py-3 text-left text-sm font-semibold">ID</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold">Project Name</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold">Start Date</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold">End Date</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold">Estimated Cost (INR)</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold">Construction Type</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold">Total Sq. Feet</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold">Number of Floors</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold">Created At</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {projects.map((project) => (
+                <tr
+                  key={project.id}
+                  className="border-b hover:bg-gray-100 cursor-pointer"
+                  onClick={() => handleProjectClick(project.id)}
+                >
+                  <td className="px-4 py-3 text-sm text-gray-900">{project.id}</td>
+                  <td className="px-4 py-3 text-sm text-gray-900">
+                    <Link 
+                      to={`/builder/dashboard/projects/${project.id}`} 
+                      className="text-blue-600 hover:underline"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {project.project_name}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-600">
+                    {project.start_date || 'Not set'}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-600">
+                    {project.end_date || 'Not set'}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-600">
+                    {project.estimated_cost
+                      ? `₹${project.estimated_cost.toLocaleString()}`
+                      : 'Not set'}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-600">
+                    {project.construction_type || 'Not set'}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-600">
+                    {project.total_sq_feet
+                      ? project.total_sq_feet.toLocaleString()
+                      : 'Not set'}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-600">
+                    {project.num_floors || 'Not set'}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-600">
+                    {new Date(project.created_at).toLocaleString()}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-600">
+                    <button
+                      onClick={(e) => handleEditClick(project.id, e)}
+                      className="text-blue-600 hover:underline"
+                    >
+                      Edit
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 };

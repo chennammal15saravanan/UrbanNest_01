@@ -5,8 +5,9 @@ import { useAuth } from '../contexts/AuthContext';
 import Projects from './Projects';
 import ProjectDetails from './ProjectDetails';
 import EditProject from './EditProject';
-import Finance from './Finance'; // Ensure this import is correct
+import Finance from './Finance';
 
+// Initialize Supabase client
 const supabaseUrl = 'https://mddprsymtcgvybenatwg.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1kZHByc3ltdGNndnliZW5hdHdnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDEwOTY5MzQsImV4cCI6MjA1NjY3MjkzNH0.hawSQGzxjV0bKG7PqP6BmpJtLmW89BSsj8AeButHrGQ';
 const supabase = createClient(supabaseUrl, supabaseKey);
@@ -304,7 +305,7 @@ const BuilderDashboard: React.FC = () => {
           <Route path="/projects" element={<Projects />} />
           <Route path="/projects/:id" element={<ProjectDetails />} />
           <Route path="/projects/edit/:id" element={<EditProject />} />
-          <Route path="/finance" element={<Finance />} /> {/* Route to Finance page */}
+          <Route path="/finance" element={<Finance />} />
         </Routes>
       </div>
 
@@ -312,57 +313,57 @@ const BuilderDashboard: React.FC = () => {
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
-            <h3 className="text-xl font-bold mb-4">Create New Project</h3>
-            {error && <p className="text-red-600 mb-4">{error}</p>}
-            <div className="max-h-[70vh] overflow-y-auto pr-2">
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700">Project Name</label>
+            <h3 className="text-xl font-bold mb-6 text-start">Create New Project</h3>
+            {error && <p className="text-danger mb-4 text-start">{error}</p>}
+            <div className="max-h-[70vh] overflow-y-auto pr-2 space-y-4">
+              <div className="mb-3">
+                <label className="form-label block text-sm font-medium text-gray-700 text-start">Project Name</label>
                 <input
                   type="text"
                   name="projectName"
                   value={formData.projectName}
                   onChange={handleInputChange}
-                  className="mt-1 p-2 w-full border rounded-md"
+                  className="form-control mt-1 p-2 w-full border rounded-md"
                   required
                 />
               </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700">Start Date</label>
+              <div className="mb-3">
+                <label className="form-label block text-sm font-medium text-gray-700 text-start">Start Date</label>
                 <input
                   type="date"
                   name="startDate"
                   value={formData.startDate}
                   onChange={handleInputChange}
-                  className="mt-1 p-2 w-full border rounded-md"
+                  className="form-control mt-1 p-2 w-full border rounded-md"
                 />
               </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700">End Date</label>
+              <div className="mb-3">
+                <label className="form-label block text-sm font-medium text-gray-700 text-start">End Date</label>
                 <input
                   type="date"
                   name="endDate"
                   value={formData.endDate}
                   onChange={handleInputChange}
-                  className="mt-1 p-2 w-full border rounded-md"
+                  className="form-control mt-1 p-2 w-full border rounded-md"
                 />
               </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700">Total Sq. Feet</label>
+              <div className="mb-3">
+                <label className="form-label block text-sm font-medium text-gray-700 text-start">Total Sq. Feet</label>
                 <input
                   type="number"
                   name="totalSqFeet"
                   value={formData.totalSqFeet}
                   onChange={handleInputChange}
-                  className="mt-1 p-2 w-full border rounded-md"
+                  className="form-control mt-1 p-2 w-full border rounded-md"
                 />
               </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700">Construction Type</label>
+              <div className="mb-3">
+                <label className="form-label block text-sm font-medium text-gray-700 text-start">Construction Type</label>
                 <select
                   name="constructionType"
                   value={formData.constructionType}
                   onChange={handleInputChange}
-                  className="mt-1 p-2 w-full border rounded-md"
+                  className="form-control mt-1 p-2 w-full border rounded-md"
                 >
                   <option value="">Select Type</option>
                   <option value="Residential">Residential</option>
@@ -372,41 +373,41 @@ const BuilderDashboard: React.FC = () => {
               </div>
               {formData.constructionType === 'Residential' && (
                 <>
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700">Number of Floors</label>
+                  <div className="mb-3">
+                    <label className="form-label block text-sm font-medium text-gray-700 text-start">Number of Floors</label>
                     <input
                       type="number"
                       name="numFloors"
                       value={formData.numFloors}
                       onChange={handleInputChange}
-                      className="mt-1 p-2 w-full border rounded-md"
+                      className="form-control mt-1 p-2 w-full border rounded-md"
                     />
                   </div>
                   {formData.numFloors > 0 && (
-                    <div className="mb-4">
-                      <label className="block text-sm font-medium text-gray-700">Floor Details</label>
+                    <div className="mb-3">
+                      <label className="form-label block text-sm font-medium text-gray-700 text-start">Floor Details</label>
                       {formData.floors.map((floor, index) => (
                         <div key={index} className="mb-2 p-2 border rounded-md">
-                          <p>Floor {floor.floorNumber}</p>
+                          <p className="text-start">Floor {floor.floorNumber}</p>
                           <div className="mb-2">
-                            <label className="block text-sm font-medium text-gray-700">Number of Apartments</label>
+                            <label className="form-label block text-sm font-medium text-gray-700 text-start">Number of Apartments</label>
                             <input
                               type="number"
                               value={floor.numApartments}
                               onChange={(e) => handleFloorInputChange(index, 'numApartments', parseInt(e.target.value) || 0)}
-                              className="mt-1 p-2 w-full border rounded-md"
+                              className="form-control mt-1 p-2 w-full border rounded-md"
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-medium text-gray-700">Apartment Types</label>
-                            <div className="flex space-x-2">
+                            <label className="form-label block text-sm font-medium text-gray-700 text-start">Apartment Types</label>
+                            <div className="d-flex gap-2">
                               {['1BHK', '2BHK', '3BHK'].map((type) => (
-                                <label key={type} className="flex items-center">
+                                <label key={type} className="d-flex align-items-center">
                                   <input
                                     type="checkbox"
                                     checked={floor.apartmentTypes.includes(type)}
                                     onChange={() => handleApartmentTypeChange(index, type)}
-                                    className="mr-1"
+                                    className="me-1"
                                   />
                                   {type}
                                 </label>
@@ -418,7 +419,7 @@ const BuilderDashboard: React.FC = () => {
                       {formData.floors.length < formData.numFloors && (
                         <button
                           onClick={handleAddFloor}
-                          className="mt-2 text-blue-600 hover:underline"
+                          className="mt-2 text-blue-600 hover:underline text-start"
                         >
                           Add Floor
                         </button>
@@ -427,20 +428,20 @@ const BuilderDashboard: React.FC = () => {
                   )}
                 </>
               )}
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700">Estimated Cost (INR)</label>
+              <div className="mb-3">
+                <label className="form-label block text-sm font-medium text-gray-700 text-start">Estimated Cost (INR)</label>
                 <input
                   type="number"
                   name="estimatedCost"
                   value={formData.estimatedCost}
                   onChange={handleInputChange}
-                  className="mt-1 p-2 w-full border rounded-md"
+                  className="form-control mt-1 p-2 w-full border rounded-md"
                 />
               </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700">Phases</label>
+              <div className="mb-3">
+                <label className="form-label block text-sm font-medium text-gray-700 text-start">Phases</label>
                 {Object.entries(formData.phases).map(([phase, { enabled, percentage }]) => (
-                  <div key={phase} className="flex items-center space-x-2 mb-2">
+                  <div key={phase} className="d-flex align-items-center gap-2 mb-2">
                     <input
                       type="checkbox"
                       name={`${phase}.enabled`}
@@ -448,13 +449,13 @@ const BuilderDashboard: React.FC = () => {
                       onChange={handleInputChange}
                       className="h-4 w-4"
                     />
-                    <span className="text-sm">{phase.replace(/([A-Z])/g, ' $1').trim()}</span>
+                    <span className="text-sm text-start">{phase.replace(/([A-Z])/g, ' $1').trim()}</span>
                     <input
                       type="number"
                       name={`${phase}.percentage`}
                       value={percentage}
                       onChange={handlePhasePercentageChange}
-                      className="p-1 w-20 border rounded-md"
+                      className="form-control p-1 w-25 border rounded-md"
                       disabled={!enabled}
                       min="0"
                       max="100"
@@ -464,16 +465,16 @@ const BuilderDashboard: React.FC = () => {
                 ))}
               </div>
             </div>
-            <div className="flex justify-end space-x-2 mt-4">
+            <div className="d-flex justify-content-end gap-2 mt-4">
               <button
                 onClick={handleCloseModal}
-                className="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400"
+                className="btn btn-secondary px-4 py-2 rounded-md hover:bg-gray-400"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSaveProject}
-                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+                className="btn btn-primary px-4 py-2 rounded-md hover:bg-blue-700"
               >
                 Save
               </button>

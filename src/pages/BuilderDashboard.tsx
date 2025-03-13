@@ -1,30 +1,52 @@
-import React, { useState } from 'react';
-import { useNavigate, Routes, Route, useParams } from 'react-router-dom';
-import { createClient } from '@supabase/supabase-js';
+import React, { useState, useEffect } from 'react';
+import { Routes, Route, useNavigate, Navigate, Link } from 'react-router-dom';
+import { 
+  Building2, Search, Bell, User, LogOut, Settings as SettingsIcon, 
+  HelpCircle, Plus, Home, BarChart3, FileText, Users, Calendar 
+} from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import Projects from './Projects';
+import { Modal, Button, Form } from 'react-bootstrap';
+import 'bootstrap/dist/css/bootstrap.min.css';
+import { createClient } from '@supabase/supabase-js';
 import ProjectDetails from './ProjectDetails';
 import EditProject from './EditProject';
 import Finance from './Finance';
+import Projects from './Projects';
 
 // Initialize Supabase client
 const supabaseUrl = 'https://mddprsymtcgvybenatwg.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1kZHByc3ltdGNndnliZW5hdHdnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDEwOTY5MzQsImV4cCI6MjA1NjY3MjkzNH0.hawSQGzxjV0bKG7PqP6BmpJtLmW89BSsj8AeButHrGQ';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// FormData interface
+interface FormData {
+  projectName: string;
+  startDate: string;
+  endDate: string;
+  totalSqFeet: string;
+  constructionType: string;
+  numFloors: number;
+  floors: { floorNumber: number; numApartments: number; apartmentTypes: string[] }[];
+  phases: Record<string, { enabled: boolean; percentage: string }>;
+  estimatedCost: string;
+}
+
 const BuilderDashboard: React.FC = () => {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [formData, setFormData] = useState({
+  const [projects, setProjects] = useState<any[]>([]);
+
+  const [formData, setFormData] = useState<FormData>({
     projectName: '',
     startDate: '',
     endDate: '',
     totalSqFeet: '',
     constructionType: '',
     numFloors: 0,
-    floors: [] as Array<{ floorNumber: number; numApartments: number; apartmentTypes: string[] }>,
+    floors: [],
     estimatedCost: '',
     phases: {
       LandPreConstruction: { enabled: true, percentage: '0' },
@@ -36,6 +58,21 @@ const BuilderDashboard: React.FC = () => {
       HandoverCompletion: { enabled: true, percentage: '0' },
     },
   });
+
+  // Fetch projects on mount
+  useEffect(() => {
+    const fetchProjects = async () => {
+      if (user?.id) {
+        const { data, error } = await supabase
+          .from('project_users')
+          .select('*')
+          .eq('user_id', user.id);
+        if (error) console.error('Error fetching projects:', error);
+        else setProjects(data || []);
+      }
+    };
+    fetchProjects();
+  }, [user?.id]);
 
   const handleOpenModal = () => setIsModalOpen(true);
   const handleCloseModal = () => {
@@ -51,18 +88,18 @@ const BuilderDashboard: React.FC = () => {
       floors: [],
       estimatedCost: '',
       phases: {
-        landPreConstruction: { enabled: true, percentage: '0' },
-        foundationStructural: { enabled: true, percentage: '0' },
-        superstructure: { enabled: true, percentage: '0' },
-        internalExternal: { enabled: true, percentage: '0' },
-        finalInstallations: { enabled: true, percentage: '0' },
-        testingQuality: { enabled: true, percentage: '0' },
-        handoverCompletion: { enabled: true, percentage: '0' },
+        LandPreConstruction: { enabled: true, percentage: '0' },
+        FoundationStructural: { enabled: true, percentage: '0' },
+        Superstructure: { enabled: true, percentage: '0' },
+        InternalExternal: { enabled: true, percentage: '0' },
+        FinalInstallations: { enabled: true, percentage: '0' },
+        TestingQuality: { enabled: true, percentage: '0' },
+        HandoverCompletion: { enabled: true, percentage: '0' },
       },
     });
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
     if (type === 'checkbox') {
       const [phase, field] = name.split('.');
@@ -129,6 +166,11 @@ const BuilderDashboard: React.FC = () => {
     });
   };
 
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/');
+  };
+
   const handleSaveProject = async () => {
     try {
       if (!user || !user.id) throw new Error('User not authenticated or ID missing');
@@ -187,16 +229,16 @@ const BuilderDashboard: React.FC = () => {
 
       const phaseInserts = Object.entries(formData.phases).map(([phase, { enabled, percentage }]) => ({
         project_id: project.id,
-        phase_name: phase === 'landPreConstruction' ? 'Land & Pre-Construction' :
-                    phase === 'foundationStructural' ? 'Foundation & Structural Construction' :
-                    phase === 'superstructure' ? 'Superstructure Construction' :
-                    phase === 'internalExternal' ? 'Internal & External' :
-                    phase === 'finalInstallations' ? 'Final Installations' :
-                    phase === 'testingQuality' ? 'Testing & Quality' :
+        phase_name: phase === 'LandPreConstruction' ? 'Land & Pre-Construction' :
+                    phase === 'FoundationStructural' ? 'Foundation & Structural Construction' :
+                    phase === 'Superstructure' ? 'Superstructure Construction' :
+                    phase === 'InternalExternal' ? 'Internal & External' :
+                    phase === 'FinalInstallations' ? 'Final Installations' :
+                    phase === 'TestingQuality' ? 'Testing & Quality' :
                     'Handover & Completion',
         enabled,
         percentage: percentage ? parseInt(percentage) : 0,
-        items: phase === 'landPreConstruction' ? [
+        items: phase === 'LandPreConstruction' ? [
           { item: "Legal Documentation", cost: null, attachment: null, status: "Pending", completion: "", comments: "" },
           { item: "Title Deed Verification", cost: null, attachment: null, status: "Pending", completion: "", comments: "" },
           { item: "Government Approvals & Permits", cost: null, attachment: null, status: "Pending", completion: "", comments: "" }
@@ -210,6 +252,19 @@ const BuilderDashboard: React.FC = () => {
       if (phaseError) throw phaseError;
 
       console.log('Project, floors, and phases saved:', project);
+
+      // Refresh projects list
+      const { data: updatedProjects, error: fetchError } = await supabase
+        .from('project_users')
+        .select('*')
+        .eq('user_id', user.id);
+      if (fetchError) {
+        console.error('Error fetching updated projects:', fetchError);
+        setError(`Failed to fetch updated projects: ${fetchError.message}`);
+      } else {
+        setProjects(updatedProjects || []);
+      }
+
       handleCloseModal();
       navigate('/builder/dashboard/projects');
     } catch (error) {
@@ -218,272 +273,488 @@ const BuilderDashboard: React.FC = () => {
     }
   };
 
+  const getActiveClass = (path: string) => {
+    const currentPath = window.location.pathname;
+    return currentPath.startsWith(path) ? 'bg-blue-700' : 'hover:bg-blue-700';
+  };
+
+  if (!user) {
+    return <Navigate to="/" replace />;
+  }
+
   return (
-    <div className="flex min-h-screen bg-gray-100">
+    <div className="flex h-screen bg-gray-100">
       {/* Sidebar */}
-      <div className="w-64 bg-blue-900 text-white p-6">
-        <h1 className="text-2xl font-bold mb-6">UrbanNest</h1>
-        <ul>
-          <li className="mb-4">
-            <button onClick={() => navigate('/builder/dashboard')} className="text-lg hover:underline">
+      <div className="w-64 bg-blue-800 text-white">
+        <div className="p-4 flex items-center">
+          <Building2 className="h-8 w-8" />
+          <span className="ml-2 text-xl font-bold">Builder Portal</span>
+        </div>
+        <nav className="mt-8">
+          <div className="px-4 space-y-1">
+            <Link to="/builder/dashboard" className={`flex items-center px-4 py-2 text-white rounded-md ${getActiveClass('/builder/dashboard')}`}>
+              <Home className="h-5 w-5 mr-3" />
               Dashboard
-            </button>
-          </li>
-          <li className="mb-4">
-            <button onClick={() => navigate('/builder/dashboard/projects')} className="text-lg hover:underline">
+            </Link>
+            <Link to="/builder/dashboard/projects" className={`flex items-center px-4 py-2 text-white rounded-md ${getActiveClass('/builder/dashboard/projects')}`}>
+              <FileText className="h-5 w-5 mr-3" />
               Projects
-            </button>
-          </li>
-          <li className="mb-4">
-            <button onClick={() => navigate('/builder/dashboard/finance')} className="text-lg hover:underline">
+            </Link>
+            <Link to="/builder/dashboard/analytics" className={`flex items-center px-4 py-2 text-white rounded-md ${getActiveClass('/builder/dashboard/analytics')}`}>
+              <BarChart3 className="h-5 w-5 mr-3" />
+              Analytics
+            </Link>
+            <Link to="/builder/dashboard/clients" className={`flex items-center px-4 py-2 text-white rounded-md ${getActiveClass('/builder/dashboard/clients')}`}>
+              <Users className="h-5 w-5 mr-3" />
+              Clients
+            </Link>
+            <Link to="/builder/dashboard/schedule" className={`flex items-center px-4 py-2 text-white rounded-md ${getActiveClass('/builder/dashboard/schedule')}`}>
+              <Calendar className="h-5 w-5 mr-3" />
+              Schedule
+            </Link>
+          </div>
+          <div className="px-4 mt-8 pt-6 border-t border-blue-700">
+            <Link to="/builder/dashboard/settings" className={`flex items-center px-4 py-2 text-white rounded-md ${getActiveClass('/builder/dashboard/settings')}`}>
+              <SettingsIcon className="h-5 w-5 mr-3" />
+              Settings
+            </Link>
+            <Link to="/builder/dashboard/help" className={`flex items-center px-4 py-2 text-white rounded-md ${getActiveClass('/builder/dashboard/help')}`}>
+              <HelpCircle className="h-5 w-5 mr-3" />
+              Help & Support
+            </Link>
+            <Link to="/builder/dashboard/finance" className={`flex items-center px-4 py-2 text-white rounded-md ${getActiveClass('/builder/dashboard/finance')}`}>
+              <FileText className="h-5 w-5 mr-3" />
               Finance
+            </Link>
+            <button 
+              onClick={handleSignOut}
+              className="w-full flex items-center px-4 py-2 text-white rounded-md hover:bg-blue-700"
+            >
+              <LogOut className="h-5 w-5 mr-3" />
+              Sign Out
             </button>
-          </li>
-          <li className="mb-4">
-            <button className="text-lg hover:underline">Analytics</button>
-          </li>
-          <li className="mb-4">
-            <button className="text-lg hover:underline">Clients</button>
-          </li>
-          <li className="mb-4">
-            <button className="text-lg hover:underline">Schedule</button>
-          </li>
-          <li className="mb-4">
-            <button className="text-lg hover:underline">Settings</button>
-          </li>
-          <li className="mb-4">
-            <button className="text-lg hover:underline">Help & Support</button>
-          </li>
-          <li className="mb-4">
-            <button className="text-lg hover:underline">Sign Out</button>
-          </li>
-        </ul>
+          </div>
+        </nav>
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 p-6">
-        <Routes>
-          <Route
-            path="/"
-            element={
-              <div>
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-bold">Dashboard Overview</h2>
-                  <button
-                    onClick={handleOpenModal}
-                    className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-                  >
-                    + New Project
-                  </button>
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Top Navigation */}
+        <header className="bg-white shadow-sm z-10">
+          <div className="px-4 py-3 flex items-center justify-between">
+            <div className="flex-1 flex">
+              <div className="max-w-lg w-full lg:max-w-xs relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Search className="h-5 w-5 text-gray-400" />
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="bg-white p-6 rounded-lg shadow">
-                    <h3 className="text-lg font-medium">Active Projects</h3>
-                    <p className="text-3xl font-bold">5</p>
-                  </div>
-                  <div className="bg-white p-6 rounded-lg shadow">
-                    <h3 className="text-lg font-medium">Pending Applications</h3>
-                    <p className="text-3xl font-bold">3</p>
-                  </div>
-                  <div className="bg-white p-6 rounded-lg shadow">
-                    <h3 className="text-lg font-medium">Completed Projects</h3>
-                    <p className="text-3xl font-bold">12</p>
-                  </div>
-                </div>
-                <div className="mt-6 bg-white p-6 rounded-lg shadow">
-                  <h3 className="text-lg font-medium">Recent Activity</h3>
-                  <ul className="mt-2">
-                    <li className="text-gray-600">Project update for Riverside Apartments - 2 hours ago</li>
-                    <li className="text-gray-600">Project update for Riverside Apartments - 2 hours ago</li>
-                    <li className="text-gray-600">Project update for Riverside Apartments - 2 hours ago</li>
-                    <li className="text-gray-600">Project update for Riverside Apartments - 2 hours ago</li>
-                  </ul>
-                </div>
-              </div>
-            }
-          />
-          <Route path="/projects" element={<Projects />} />
-          <Route path="/projects/:id" element={<ProjectDetails />} />
-          <Route path="/projects/edit/:id" element={<EditProject />} />
-          <Route path="/finance" element={<Finance />} />
-        </Routes>
-      </div>
-
-      {/* Modal for New Project */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
-            <h3 className="text-xl font-bold mb-6 text-start">Create New Project</h3>
-            {error && <p className="text-danger mb-4 text-start">{error}</p>}
-            <div className="max-h-[70vh] overflow-y-auto pr-2 space-y-4">
-              <div className="mb-3">
-                <label className="form-label block text-sm font-medium text-gray-700 text-start">Project Name</label>
                 <input
+                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  placeholder="Search projects..."
+                  type="search"
+                />
+              </div>
+            </div>
+            <div className="flex items-center space-x-4">
+              <Link to="#" className="text-gray-600 hover:underline">Home</Link>
+              <Link to="#" className="text-gray-600 hover:underline">Docs</Link>
+              <Link to="#" className="text-gray-600 hover:underline">Blogs</Link>
+              <button className="p-2 rounded-full text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                <Bell className="h-6 w-6" />
+              </button>
+              <div className="ml-4 relative">
+                <button
+                  onClick={() => setShowProfileMenu(!showProfileMenu)}
+                  className="flex items-center max-w-xs text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  <span className="sr-only">Open user menu</span>
+                  <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center text-white">
+                    <User className="h-5 w-5" />
+                  </div>
+                </button>
+                {showProfileMenu && (
+                  <div className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none">
+                    <Link to="/builder/dashboard/settings" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                      Your Profile
+                    </Link>
+                    <button
+                      onClick={handleSignOut}
+                      className="w-full text-left block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      Sign out
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="px-4 py-3 border-t border-gray-200 flex justify-center">
+            <button 
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md flex items-center"
+              onClick={handleOpenModal}
+            >
+              <Plus className="w-5 h-5 mr-2" />
+              New Project
+            </button>
+          </div>
+        </header>
+
+        {/* Main Content Area */}
+        <main className="flex-1 overflow-auto bg-gray-100 p-6">
+          {error && (
+            <div className="p-4 bg-red-100 text-red-800 rounded mb-4">
+              {error}
+            </div>
+          )}
+          <Routes>
+            <Route path="/" element={<Overview />} />
+            <Route path="/projects" element={<Projects />} />
+            <Route path="/projects/:id" element={<ProjectDetails />} />
+            <Route path="/projects/edit/:id" element={<EditProject />} />
+            <Route path="/finance" element={<Finance />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/help" element={<Help />} />
+            <Route path="*" element={<Navigate to="/builder/dashboard" replace />} />
+          </Routes>
+        </main>
+
+        {/* Modal for New Project */}
+        <Modal show={isModalOpen} onHide={handleCloseModal} size="lg" scrollable>
+          <Modal.Header closeButton>
+            <Modal.Title>Create a New Project</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            {error && (
+              <div className="mb-4 p-3 bg-red-100 text-red-800 rounded">
+                {error}
+              </div>
+            )}
+            <Form>
+              <Form.Group className="mb-3">
+                <Form.Label>Project Name:</Form.Label>
+                <Form.Control
                   type="text"
                   name="projectName"
                   value={formData.projectName}
                   onChange={handleInputChange}
-                  className="form-control mt-1 p-2 w-full border rounded-md"
+                  placeholder="Enter project name"
                   required
                 />
-              </div>
-              <div className="mb-3">
-                <label className="form-label block text-sm font-medium text-gray-700 text-start">Start Date</label>
-                <input
+              </Form.Group>
+
+              <Form.Group className="mb-3">
+                <Form.Label>Start Date:</Form.Label>
+                <Form.Control
                   type="date"
                   name="startDate"
                   value={formData.startDate}
                   onChange={handleInputChange}
-                  className="form-control mt-1 p-2 w-full border rounded-md"
                 />
-              </div>
-              <div className="mb-3">
-                <label className="form-label block text-sm font-medium text-gray-700 text-start">End Date</label>
-                <input
+              </Form.Group>
+
+              <Form.Group className="mb-3">
+                <Form.Label>End Date:</Form.Label>
+                <Form.Control
                   type="date"
                   name="endDate"
                   value={formData.endDate}
                   onChange={handleInputChange}
-                  className="form-control mt-1 p-2 w-full border rounded-md"
                 />
-              </div>
-              <div className="mb-3">
-                <label className="form-label block text-sm font-medium text-gray-700 text-start">Total Sq. Feet</label>
-                <input
+              </Form.Group>
+
+              <Form.Group className="mb-3">
+                <Form.Label>Total Square Feet Planned:</Form.Label>
+                <Form.Control
                   type="number"
                   name="totalSqFeet"
                   value={formData.totalSqFeet}
                   onChange={handleInputChange}
-                  className="form-control mt-1 p-2 w-full border rounded-md"
+                  placeholder="Enter total square feet"
                 />
-              </div>
-              <div className="mb-3">
-                <label className="form-label block text-sm font-medium text-gray-700 text-start">Construction Type</label>
-                <select
+              </Form.Group>
+
+              <Form.Group className="mb-3">
+                <Form.Label>Estimated Cost (INR):</Form.Label>
+                <Form.Control
+                  type="number"
+                  name="estimatedCost"
+                  value={formData.estimatedCost}
+                  onChange={handleInputChange}
+                  placeholder="Enter estimated cost in INR"
+                />
+              </Form.Group>
+
+              <Form.Group className="mb-3">
+                <Form.Label>Type of Construction:</Form.Label>
+                <Form.Select
                   name="constructionType"
                   value={formData.constructionType}
                   onChange={handleInputChange}
-                  className="form-control mt-1 p-2 w-full border rounded-md"
                 >
                   <option value="">Select Type</option>
                   <option value="Residential">Residential</option>
                   <option value="Commercial">Commercial</option>
                   <option value="Industrial">Industrial</option>
-                </select>
-              </div>
+                </Form.Select>
+              </Form.Group>
+
               {formData.constructionType === 'Residential' && (
                 <>
-                  <div className="mb-3">
-                    <label className="form-label block text-sm font-medium text-gray-700 text-start">Number of Floors</label>
-                    <input
+                  <Form.Group className="mb-3">
+                    <Form.Label>Number of Floors:</Form.Label>
+                    <Form.Control
                       type="number"
                       name="numFloors"
                       value={formData.numFloors}
                       onChange={handleInputChange}
-                      className="form-control mt-1 p-2 w-full border rounded-md"
                     />
-                  </div>
+                  </Form.Group>
                   {formData.numFloors > 0 && (
-                    <div className="mb-3">
-                      <label className="form-label block text-sm font-medium text-gray-700 text-start">Floor Details</label>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Floor Details:</Form.Label>
                       {formData.floors.map((floor, index) => (
-                        <div key={index} className="mb-2 p-2 border rounded-md">
-                          <p className="text-start">Floor {floor.floorNumber}</p>
-                          <div className="mb-2">
-                            <label className="form-label block text-sm font-medium text-gray-700 text-start">Number of Apartments</label>
-                            <input
-                              type="number"
-                              value={floor.numApartments}
-                              onChange={(e) => handleFloorInputChange(index, 'numApartments', parseInt(e.target.value) || 0)}
-                              className="form-control mt-1 p-2 w-full border rounded-md"
-                            />
-                          </div>
-                          <div>
-                            <label className="form-label block text-sm font-medium text-gray-700 text-start">Apartment Types</label>
-                            <div className="d-flex gap-2">
-                              {['1BHK', '2BHK', '3BHK'].map((type) => (
-                                <label key={type} className="d-flex align-items-center">
-                                  <input
-                                    type="checkbox"
-                                    checked={floor.apartmentTypes.includes(type)}
-                                    onChange={() => handleApartmentTypeChange(index, type)}
-                                    className="me-1"
-                                  />
-                                  {type}
-                                </label>
-                              ))}
-                            </div>
+                        <div key={index} className="border p-3 mt-2 rounded">
+                          <h5 className="font-medium">Floor {floor.floorNumber}</h5>
+                          <Form.Label>Number of Apartments:</Form.Label>
+                          <Form.Control
+                            type="number"
+                            value={floor.numApartments}
+                            onChange={(e) =>
+                              handleFloorInputChange(index, 'numApartments', parseInt(e.target.value) || 0)
+                            }
+                          />
+                          <Form.Label>Apartment Types:</Form.Label>
+                          <div className="flex flex-wrap gap-2 mt-1">
+                            {['1BHK', '2BHK', '3BHK'].map((type) => (
+                              <Form.Check
+                                key={type}
+                                type="checkbox"
+                                label={type}
+                                checked={floor.apartmentTypes.includes(type)}
+                                onChange={() => handleApartmentTypeChange(index, type)}
+                              />
+                            ))}
                           </div>
                         </div>
                       ))}
                       {formData.floors.length < formData.numFloors && (
-                        <button
+                        <Button
+                          variant="link"
                           onClick={handleAddFloor}
-                          className="mt-2 text-blue-600 hover:underline text-start"
+                          className="mt-2 text-blue-600 hover:underline"
                         >
                           Add Floor
-                        </button>
+                        </Button>
                       )}
-                    </div>
+                    </Form.Group>
                   )}
                 </>
               )}
-              <div className="mb-3">
-                <label className="form-label block text-sm font-medium text-gray-700 text-start">Estimated Cost (INR)</label>
-                <input
-                  type="number"
-                  name="estimatedCost"
-                  value={formData.estimatedCost}
-                  onChange={handleInputChange}
-                  className="form-control mt-1 p-2 w-full border rounded-md"
-                />
-              </div>
-              <div className="mb-3">
-                <label className="form-label block text-sm font-medium text-gray-700 text-start">Phases</label>
-                {Object.entries(formData.phases).map(([phase, { enabled, percentage }]) => (
-                  <div key={phase} className="d-flex align-items-center gap-2 mb-2">
-                    <input
-                      type="checkbox"
-                      name={`${phase}.enabled`}
-                      checked={enabled}
-                      onChange={handleInputChange}
-                      className="h-4 w-4"
-                    />
-                    <span className="text-sm text-start">{phase.replace(/([A-Z])/g, ' $1').trim()}</span>
-                    <input
-                      type="number"
-                      name={`${phase}.percentage`}
-                      value={percentage}
-                      onChange={handlePhasePercentageChange}
-                      className="form-control p-1 w-25 border rounded-md"
-                      disabled={!enabled}
-                      min="0"
-                      max="100"
-                    />
-                    <span>%</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="d-flex justify-content-end gap-2 mt-4">
-              <button
-                onClick={handleCloseModal}
-                className="btn btn-secondary px-4 py-2 rounded-md hover:bg-gray-400"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSaveProject}
-                className="btn btn-primary px-4 py-2 rounded-md hover:bg-blue-700"
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+
+              <h4 className="mt-4 font-medium">Phases</h4>
+              {Object.entries(formData.phases).map(([phase, { enabled, percentage }]) => (
+                <Form.Group className="mb-3" key={phase}>
+                  <Form.Check
+                    type="checkbox"
+                    label={
+                      phase === 'LandPreConstruction' ? 'Land & Pre-construction Phase' :
+                      phase === 'FoundationStructural' ? 'Foundation & Structural Construction' :
+                      phase === 'Superstructure' ? 'Superstructure Construction' :
+                      phase === 'InternalExternal' ? 'Internal & External' :
+                      phase === 'FinalInstallations' ? 'Final Installations' :
+                      phase === 'TestingQuality' ? 'Testing & Quality' :
+                      'Handover & Completion'
+                    }
+                    checked={enabled}
+                    onChange={(e) => handleInputChange(e)}
+                    name={`${phase}.enabled`}
+                  />
+                  <Form.Control
+                    type="number"
+                    placeholder="%"
+                    value={percentage}
+                    onChange={handlePhasePercentageChange}
+                    name={`${phase}.percentage`}
+                    className="mt-2 w-20"
+                    disabled={!enabled}
+                    min="0"
+                    max="100"
+                  />
+                </Form.Group>
+              ))}
+            </Form>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="secondary" onClick={handleCloseModal}>
+              Cancel
+            </Button>
+            <Button variant="primary" onClick={handleSaveProject}>
+              Save Project
+            </Button>
+          </Modal.Footer>
+        </Modal>
+      </div>
     </div>
   );
 };
+
+// Dashboard components
+const Overview = () => (
+  <div className="p-6">
+    <h2 className="text-2xl font-bold mb-6">Dashboard Overview</h2>
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="bg-white p-6 rounded-lg shadow">
+        <h3 className="text-lg font-medium text-gray-900">Active Projects</h3>
+        <p className="text-3xl font-bold text-blue-600 mt-2">5</p>
+      </div>
+      <div className="bg-white p-6 rounded-lg shadow">
+        <h3 className="text-lg font-medium text-gray-900">Pending Approvals</h3>
+        <p className="text-3xl font-bold text-amber-500 mt-2">3</p>
+      </div>
+      <div className="bg-white p-6 rounded-lg shadow">
+        <h3 className="text-lg font-medium text-gray-900">Completed Projects</h3>
+        <p className="text-3xl font-bold text-green-600 mt-2">12</p>
+      </div>
+    </div>
+    
+    <div className="mt-8 bg-white p-6 rounded-lg shadow">
+      <h3 className="text-lg font-medium text-gray-900 mb-4">Recent Activity</h3>
+      <div className="space-y-4">
+        {[1, 2, 3, 4, 5].map((item) => (
+          <div key={item} className="border-b pb-3 last:border-0">
+            <p className="text-gray-800">Project update for Riverside Apartments</p>
+            <p className="text-sm text-gray-500">2 hours ago</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+);
+
+const SettingsPage = () => (
+  <div className="p-6">
+    <h2 className="text-2xl font-bold mb-6">Account Settings</h2>
+    <div className="bg-white rounded-lg shadow p-6">
+      <form className="space-y-6">
+        <div>
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Profile Information</h3>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Full Name</label>
+              <input 
+                type="text" 
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" 
+                defaultValue="John Doe" 
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Business Name</label>
+              <input 
+                type="text" 
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" 
+                defaultValue="Doe Construction LLC" 
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Email</label>
+              <input 
+                type="email" 
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" 
+                defaultValue="john@example.com" 
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Phone</label>
+              <input 
+                type="tel" 
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" 
+                defaultValue="+1 (555) 000-0000" 
+              />
+            </div>
+          </div>
+        </div>
+        
+        <div>
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Change Password</h3>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Current Password</label>
+              <input 
+                type="password" 
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" 
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">New Password</label>
+              <input 
+                type="password" 
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" 
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Confirm New Password</label>
+              <input 
+                type="password" 
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" 
+              />
+            </div>
+          </div>
+        </div>
+        
+        <div>
+          <button 
+            type="submit" 
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md"
+          >
+            Save Changes
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+);
+
+const Help = () => (
+  <div className="p-6">
+    <h2 className="text-2xl font-bold mb-6">Help & Support</h2>
+    <div className="bg-white rounded-lg shadow p-6">
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Frequently Asked Questions</h3>
+          <div className="space-y-6">
+            <div>
+              <h4 className="font-medium text-gray-900">How do I create a new project?</h4>
+              <p className="text-gray-600 mt-1">Click on the "New Project" button in the Projects section and fill out the required information.</p>
+            </div>
+            <div>
+              <h4 className="font-medium text-gray-900">How can I invite team members?</h4>
+              <p className="text-gray-600 mt-1">Go to the Project details page and click on "Team" tab, then use the "Invite Member" button.</p>
+            </div>
+            <div>
+              <h4 className="font-medium text-gray-900">How do I update project status?</h4>
+              <p className="text-gray-600 mt-1">Open the project, go to "Details" tab, and use the status dropdown to change the current status.</p>
+            </div>
+            <div>
+              <h4 className="font-medium text-gray-900">Can I export project data?</h4>
+              <p className="text-gray-600 mt-1">Yes, on any project page, look for the "Export" button in the top-right corner.</p>
+            </div>
+          </div>
+        </div>
+        
+        <div>
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Contact Support</h3>
+          <p className="text-gray-600 mb-4">Need more help? Our support team is available 24/7.</p>
+          <div className="space-x-4">
+            <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md">
+              Email Support
+            </button>
+            <button className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md">
+              Live Chat
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+);
 
 export default BuilderDashboard;

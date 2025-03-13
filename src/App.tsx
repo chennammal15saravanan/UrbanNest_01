@@ -19,9 +19,6 @@ function App() {
                 <span className="ml-2 text-xl font-bold text-gray-900">UrbanNest</span>
               </div>
               <div className="flex items-center space-x-4">
-                <a href="/" className="text-gray-700 hover:text-blue-600">Home</a>
-                <a href="#" className="text-gray-700 hover:text-blue-600">Docs</a>
-                <a href="#" className="text-gray-700 hover:text-blue-600">Blogs</a>
               </div>
             </div>
           </div>

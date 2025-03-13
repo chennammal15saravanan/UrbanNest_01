@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, ChangeEvent } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase'; // Assuming supabase is configured in a separate file
 import { Modal, Button, Form, Tabs, Tab } from 'react-bootstrap';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
+// Define interfaces for type safety
 interface FormData {
   projectName: string;
   startDate: string;
@@ -24,7 +25,7 @@ interface PhaseDetail {
   comments: string;
 }
 
-const EditProject = () => {
+const EditProject: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [formData, setFormData] = useState<FormData>({
@@ -45,8 +46,8 @@ const EditProject = () => {
     testingQuality: [],
     handoverCompletion: [],
   });
-  const [totalCost, setTotalCost] = useState<number>(0); // State to track total cost
-  const [loading, setLoading] = useState(true);
+  const [totalCost, setTotalCost] = useState<number>(0);
+  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
   const defaultSubPhases = {
@@ -110,7 +111,6 @@ const EditProject = () => {
       }
 
       try {
-        // Fetch project data
         const { data: projectData, error: projectError } = await supabase
           .from('project_users')
           .select('*')
@@ -120,7 +120,6 @@ const EditProject = () => {
         if (projectError) throw projectError;
         if (!projectData) throw new Error('Project not found');
 
-        // Fetch floors data
         const { data: floorsData, error: floorsError } = await supabase
           .from('project_floors')
           .select('*')
@@ -128,7 +127,6 @@ const EditProject = () => {
 
         if (floorsError) throw floorsError;
 
-        // Fetch phase data
         const { data: phaseData, error: phaseError } = await supabase
           .from('project_phases')
           .select('*')
@@ -136,7 +134,6 @@ const EditProject = () => {
 
         if (phaseError) throw phaseError;
 
-        // Set basic form data
         setFormData({
           projectName: projectData.project_name || '',
           startDate: projectData.start_date || '',
@@ -151,7 +148,6 @@ const EditProject = () => {
           })) || [],
         });
 
-        // Initialize all seven phases with their default sub-phases
         const phaseMap: Record<string, PhaseDetail[]> = {
           landPreConstruction: defaultSubPhases.landPreConstruction.map((item) => ({
             item,
@@ -211,7 +207,6 @@ const EditProject = () => {
           })),
         };
 
-        // Merge with fetched phase data, ensuring all sub-phases are preserved
         if (phaseData && phaseData.length > 0) {
           phaseData.forEach((phase: any) => {
             const phaseKey = Object.keys(phaseNameMapping).find(
@@ -246,11 +241,10 @@ const EditProject = () => {
           });
         }
 
-        // Calculate initial total cost
         const initialTotalCost = calculateTotalCost(phaseMap);
         setTotalCost(initialTotalCost);
 
-        console.log('Initialized Phase Map:', phaseMap); // Debugging
+        console.log('Initialized Phase Map:', phaseMap);
         setPhases(phaseMap);
       } catch (error) {
         console.error('Error fetching project:', error);
@@ -263,7 +257,6 @@ const EditProject = () => {
     fetchProject();
   }, [id]);
 
-  // Function to calculate total cost across all phases
   const calculateTotalCost = (phaseData: Record<string, PhaseDetail[]>): number => {
     return Object.values(phaseData).reduce((total, phaseDetails) => {
       const phaseTotal = phaseDetails.reduce((sum, detail) => {
@@ -274,7 +267,9 @@ const EditProject = () => {
     }, 0);
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (
+    e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+  ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
@@ -282,7 +277,7 @@ const EditProject = () => {
     }));
   };
 
-  const handleFloorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFloorChange = (e: ChangeEvent<HTMLInputElement>) => {
     const numFloors = parseInt(e.target.value) || 0;
     setFormData((prev) => ({
       ...prev,
@@ -320,7 +315,6 @@ const EditProject = () => {
       const updatedPhase = [...prev[phaseName]];
       updatedPhase[index] = { ...updatedPhase[index], [field]: value };
       const newPhases = { ...prev, [phaseName]: updatedPhase };
-      // Recalculate total cost whenever a cost is changed
       if (field === 'cost') {
         const newTotalCost = calculateTotalCost(newPhases);
         setTotalCost(newTotalCost);
@@ -345,7 +339,7 @@ const EditProject = () => {
           total_sq_feet: formData.totalSquareFeet ? parseInt(formData.totalSquareFeet) : null,
           construction_type: formData.constructionType || null,
           num_floors: formData.numFloors || null,
-          estimated_cost: totalCost || null, // Save the total cost to the project
+          estimated_cost: totalCost || null,
         })
         .eq('id', id);
 
@@ -363,7 +357,6 @@ const EditProject = () => {
         if (floorError) throw floorError;
       }
 
-      // Save all seven phases with their sub-phases
       await supabase.from('project_phases').delete().eq('project_id', id);
       const phaseInserts = Object.entries(phases).map(([phaseName, phaseDetails]) => ({
         project_id: id,
@@ -382,12 +375,9 @@ const EditProject = () => {
         })),
       }));
 
-      console.log('Phase Inserts:', phaseInserts); // Debugging
+      console.log('Phase Inserts:', phaseInserts);
       const { error: phaseError } = await supabase.from('project_phases').insert(phaseInserts);
-      if (phaseError) {
-        console.error('Phase insert error:', phaseError);
-        throw phaseError;
-      }
+      if (phaseError) throw phaseError;
 
       console.log('Project saved successfully');
       navigate('/builder/dashboard/projects');
@@ -397,16 +387,16 @@ const EditProject = () => {
     }
   };
 
-  if (loading) return <div className="p-6">Loading project...</div>;
-  if (error) return <div className="p-6 text-red-600">{error}</div>;
+  if (loading) return <div style={styles.loading}>Loading project...</div>;
+  if (error) return <div style={styles.error}>{error}</div>;
 
   return (
-    <div className="p-6">
-      <h2 className="text-2xl font-bold mb-6">Edit Project: {formData.projectName || 'Loading...'}</h2>
-      <div className="bg-white p-4 rounded-lg shadow">
-        <Form>
-          <Form.Group className="mb-3">
-            <Form.Label>Project Name:</Form.Label>
+    <div style={styles.container}>
+      <h2 style={styles.header}>Edit Project: {formData.projectName || 'Loading...'}</h2>
+      <div style={styles.card}>
+        <Form style={styles.form}>
+          <Form.Group style={styles.formGroup}>
+            <Form.Label style={styles.label}>Project Name:</Form.Label>
             <Form.Control
               type="text"
               name="projectName"
@@ -414,73 +404,90 @@ const EditProject = () => {
               onChange={handleInputChange}
               placeholder="Enter project name"
               required
+              style={styles.input}
             />
           </Form.Group>
 
-          <Form.Group className="mb-3">
-            <Form.Label>Start Date:</Form.Label>
-            <Form.Control
-              type="date"
-              name="startDate"
-              value={formData.startDate}
-              onChange={handleInputChange}
-            />
-          </Form.Group>
+          {/* Start Date and End Date in the same line */}
+          <div style={styles.dateContainer}>
+            <Form.Group style={styles.dateField}>
+              <Form.Label style={styles.label}>Start Date:</Form.Label>
+              <Form.Control
+                type="date"
+                name="startDate"
+                value={formData.startDate}
+                onChange={handleInputChange}
+                style={styles.dateInput}
+              />
+            </Form.Group>
+            <Form.Group style={styles.dateField}>
+              <Form.Label style={styles.label}>End Date:</Form.Label>
+              <Form.Control
+                type="date"
+                name="endDate"
+                value={formData.endDate}
+                onChange={handleInputChange}
+                style={styles.dateInput}
+              />
+            </Form.Group>
+          </div>
 
-          <Form.Group className="mb-3">
-            <Form.Label>End Date:</Form.Label>
-            <Form.Control
-              type="date"
-              name="endDate"
-              value={formData.endDate}
-              onChange={handleInputChange}
-            />
-          </Form.Group>
-
-          <Form.Group className="mb-3">
-            <Form.Label>Total Square Feet Planned:</Form.Label>
+          <Form.Group style={styles.formGroup}>
+            <Form.Label style={styles.label}>Total Square Feet Planned:</Form.Label>
             <Form.Control
               type="number"
               name="totalSquareFeet"
               value={formData.totalSquareFeet}
               onChange={handleInputChange}
               placeholder="Enter total square feet"
+              style={styles.input}
             />
           </Form.Group>
 
-          <Form.Group className="mb-3">
-            <Form.Label>Type of Construction:</Form.Label>
-            <Form.Select
-              name="constructionType"
-              value={formData.constructionType}
-              onChange={handleInputChange}
-            >
-              <option value="">Select</option>
-              <option value="Residential">Residential</option>
-              <option value="Commercial">Commercial</option>
-            </Form.Select>
-          </Form.Group>
+          {/* Type of Construction and Number of Floors in the same line */}
+          <div style={styles.constructionFloorsContainer}>
+            <Form.Group style={styles.constructionField}>
+              <Form.Label style={styles.label}>Type of Construction:</Form.Label>
+              <Form.Select
+                name="constructionType"
+                value={formData.constructionType}
+                onChange={handleInputChange}
+                style={styles.constructionInput}
+              >
+                <option value="">Select</option>
+                <option value="Residential">Residential</option>
+                <option value="Commercial">Commercial</option>
+              </Form.Select>
+            </Form.Group>
 
-          {formData.constructionType === "Residential" && (
-            <Form.Group className="mb-3">
-              <Form.Label>Number of Floors:</Form.Label>
-              <Form.Control
-                type="number"
-                name="numFloors"
-                value={formData.numFloors}
-                onChange={handleFloorChange}
-              />
+            {formData.constructionType === "Residential" && (
+              <Form.Group style={styles.floorsField}>
+                <Form.Label style={styles.label}>Number of Floors:</Form.Label>
+                <Form.Control
+                  type="number"
+                  name="numFloors"
+                  value={formData.numFloors}
+                  onChange={handleFloorChange}
+                  style={styles.floorsInput}
+                />
+              </Form.Group>
+            )}
+          </div>
+
+          {formData.constructionType === "Residential" && formData.numFloors > 0 && (
+            <div style={styles.formGroup}>
               {formData.floors.map((floor, index) => (
-                <div key={index} className="border p-3 mt-2">
-                  <h5>Floor {floor.floorNumber}</h5>
-                  <Form.Label>Number of Apartments:</Form.Label>
+                <div key={index} style={styles.floorCard}>
+                  <h5 style={styles.floorHeader}>Floor {floor.floorNumber}</h5>
+                  <Form.Label style={styles.label}>Number of Apartments:</Form.Label>
                   <Form.Control
                     type="number"
                     value={floor.numApartments}
                     onChange={(e) => handleApartmentChange(index, "numApartments", e.target.value)}
+                    style={styles.input}
                   />
-                  <Form.Label>Apartment Types:</Form.Label>
-                  <div className="flex flex-wrap gap-2">
+                  <Form.Label style={styles.label}>Apartment Types:</Form.Label>
+                  <div style={styles.checkboxGroup}>
                     {['1BHK', '2BHK', '3BHK'].map((type) => (
                       <Form.Check
                         key={type}
@@ -488,16 +495,17 @@ const EditProject = () => {
                         label={type}
                         checked={floor.apartmentTypes.includes(type)}
                         onChange={() => handleApartmentChange(index, "apartmentTypes", type)}
+                        style={styles.checkbox}
                       />
                     ))}
                   </div>
                 </div>
               ))}
-            </Form.Group>
+            </div>
           )}
 
-          <h4 className="mt-4 mb-3">Phase Details</h4>
-          <Tabs defaultActiveKey="landPreConstruction" id="phase-tabs" className="mb-3">
+          <h4 style={styles.sectionHeader}>Phase Details</h4>
+          <Tabs defaultActiveKey="landPreConstruction" id="phase-tabs" style={styles.tabs}>
             <Tab eventKey="landPreConstruction" title="1. Land & Pre-Construction">
               <PhaseTable
                 phaseName="landPreConstruction"
@@ -549,16 +557,15 @@ const EditProject = () => {
             </Tab>
           </Tabs>
 
-          {/* Display Total Cost */}
-          <div className="mt-4">
-            <h4 className="text-lg font-medium">Total Project Cost: ₹{totalCost.toLocaleString()}</h4>
+          <div style={styles.totalCost}>
+            <h4 style={styles.totalCostHeader}>Total Project Cost: ₹{totalCost.toLocaleString()}</h4>
           </div>
 
-          <div className="mt-4 flex space-x-4">
+          <div style={styles.buttonGroup}>
             <Button variant="danger" onClick={() => navigate('/builder/dashboard/projects')}>
               Cancel
             </Button>
-            <Button variant="success" onClick={handleSaveProject}>
+            <Button variant="success" onClick={handleSaveProject} style={styles.saveButton}>
               Save Changes
             </Button>
           </div>
@@ -574,8 +581,8 @@ const PhaseTable: React.FC<{
   onChange: (phaseName: string, index: number, field: keyof PhaseDetail, value: string) => void;
 }> = ({ phaseName, phaseDetails, onChange }) => {
   return (
-    <div className="table-responsive">
-      <table className="table table-bordered">
+    <div style={styles.tableContainer}>
+      <table className="table table-bordered" style={styles.table}>
         <thead>
           <tr>
             <th>Item</th>
@@ -595,12 +602,16 @@ const PhaseTable: React.FC<{
                   type="number"
                   value={detail.cost}
                   onChange={(e) => onChange(phaseName, index, 'cost', e.target.value)}
+                  style={styles.tableInput}
                 />
               </td>
               <td>
                 <Form.Control
                   type="file"
-                  onChange={(e: any) => onChange(phaseName, index, 'attachment', e.target.files[0]?.name || '')}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                    onChange(phaseName, index, 'attachment', e.target.files?.[0]?.name || '')
+                  }
+                  style={styles.tableInput}
                 />
                 {detail.attachment && <span>{detail.attachment}</span>}
               </td>
@@ -608,6 +619,7 @@ const PhaseTable: React.FC<{
                 <Form.Select
                   value={detail.status}
                   onChange={(e) => onChange(phaseName, index, 'status', e.target.value)}
+                  style={styles.tableInput}
                 >
                   <option value="Pending">Pending</option>
                   <option value="In Progress">In Progress</option>
@@ -626,6 +638,7 @@ const PhaseTable: React.FC<{
                   }}
                   min="0"
                   max="100"
+                  style={styles.tableInput}
                 />
               </td>
               <td>
@@ -633,6 +646,7 @@ const PhaseTable: React.FC<{
                   as="textarea"
                   value={detail.comments}
                   onChange={(e) => onChange(phaseName, index, 'comments', e.target.value)}
+                  style={styles.tableTextarea}
                 />
               </td>
             </tr>
@@ -641,6 +655,156 @@ const PhaseTable: React.FC<{
       </table>
     </div>
   );
+};
+
+// Inline styles for left alignment and design
+const styles: { [key: string]: React.CSSProperties } = {
+  container: {
+    padding: '24px',
+    textAlign: 'left',
+    width: '100%', // Full width for the container
+    margin: '0',
+  },
+  header: {
+    fontSize: '24px',
+    fontWeight: 'bold',
+    marginBottom: '24px',
+    textAlign: 'left',
+  },
+  card: {
+    backgroundColor: '#fff',
+    padding: '16px',
+    borderRadius: '8px',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+    width: '100%', // Full width for the card
+    boxSizing: 'border-box',
+    border: '1px solid #dee2e6', // Ensure the border spans the full width
+  },
+  form: {
+    textAlign: 'left',
+  },
+  formGroup: {
+    marginBottom: '16px',
+  },
+  label: {
+    textAlign: 'left',
+    display: 'block',
+  },
+  input: {
+    width: '100%',
+    maxWidth: '500px',
+  },
+  dateContainer: {
+    display: 'flex',
+    gap: '16px',
+    flexWrap: 'nowrap', // Keep Start Date and End Date in the same line
+    marginBottom: '16px',
+    overflowX: 'auto', // Allow horizontal scrolling if needed
+  },
+  dateField: {
+    flex: '1',
+    minWidth: '200px', // Ensure fields don't get too small
+  },
+  dateInput: {
+    width: '100%',
+  },
+  constructionFloorsContainer: {
+    display: 'flex',
+    gap: '16px',
+    flexWrap: 'nowrap', // Keep Type of Construction and Number of Floors in the same line
+    marginBottom: '16px',
+    overflowX: 'auto', // Allow horizontal scrolling if needed
+  },
+  constructionField: {
+    flex: '1',
+    minWidth: '200px', // Ensure field doesn't get too small
+  },
+  constructionInput: {
+    width: '100%',
+  },
+  floorsField: {
+    flex: '1',
+    minWidth: '200px', // Ensure field doesn't get too small
+  },
+  floorsInput: {
+    width: '100%',
+  },
+  floorCard: {
+    border: '1px solid #dee2e6',
+    padding: '12px',
+    marginTop: '8px',
+    borderRadius: '4px',
+    textAlign: 'left',
+    width: '100%',
+  },
+  floorHeader: {
+    fontSize: '18px',
+    marginBottom: '8px',
+    textAlign: 'left',
+  },
+  checkboxGroup: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '8px',
+    justifyContent: 'flex-start',
+  },
+  checkbox: {
+    marginRight: '16px',
+  },
+  sectionHeader: {
+    marginTop: '16px',
+    marginBottom: '12px',
+    fontSize: '20px',
+    textAlign: 'left',
+  },
+  tabs: {
+    marginBottom: '12px',
+    textAlign: 'left',
+    width: '100%',
+  },
+  tableContainer: {
+    textAlign: 'left',
+    overflowX: 'auto',
+    width: '100%',
+  },
+  table: {
+    width: '100%',
+    textAlign: 'left',
+  },
+  tableInput: {
+    width: '100%',
+  },
+  tableTextarea: {
+    width: '100%',
+    minHeight: '80px',
+  },
+  totalCost: {
+    marginTop: '16px',
+    textAlign: 'left',
+  },
+  totalCostHeader: {
+    fontSize: '18px',
+    fontWeight: '500',
+    textAlign: 'left',
+  },
+  buttonGroup: {
+    marginTop: '16px',
+    display: 'flex',
+    gap: '16px',
+    justifyContent: 'flex-start',
+  },
+  saveButton: {
+    marginLeft: '8px',
+  },
+  loading: {
+    padding: '24px',
+    textAlign: 'left',
+  },
+  error: {
+    padding: '24px',
+    color: '#dc3545',
+    textAlign: 'left',
+  },
 };
 
 export default EditProject;

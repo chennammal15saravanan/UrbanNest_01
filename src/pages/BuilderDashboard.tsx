@@ -26,13 +26,13 @@ const BuilderDashboard: React.FC = () => {
     floors: [] as Array<{ floorNumber: number; numApartments: number; apartmentTypes: string[] }>,
     estimatedCost: '',
     phases: {
-      landPreConstruction: { enabled: true, percentage: '0' },
-      foundationStructural: { enabled: true, percentage: '0' },
-      superstructure: { enabled: true, percentage: '0' },
-      internalExternal: { enabled: true, percentage: '0' },
-      finalInstallations: { enabled: true, percentage: '0' },
-      testingQuality: { enabled: true, percentage: '0' },
-      handoverCompletion: { enabled: true, percentage: '0' },
+      LandPreConstruction: { enabled: true, percentage: '0' },
+      FoundationStructural: { enabled: true, percentage: '0' },
+      Superstructure: { enabled: true, percentage: '0' },
+      InternalExternal: { enabled: true, percentage: '0' },
+      FinalInstallations: { enabled: true, percentage: '0' },
+      TestingQuality: { enabled: true, percentage: '0' },
+      HandoverCompletion: { enabled: true, percentage: '0' },
     },
   });
 

@@ -95,6 +95,17 @@ const ViewProject: React.FC = () => {
     handoverCompletion: { name: 'Handover & Completion', subphases: defaultSubPhases.handoverCompletion },
   };
 
+  // Define the fixed order of phases
+  const phaseOrder = [
+    'landPreConstruction',
+    'foundationStructural',
+    'superstructure',
+    'internalExternal',
+    'finalInstallations',
+    'testingQuality',
+    'handoverCompletion',
+  ];
+
   useEffect(() => {
     const fetchProject = async () => {
       try {
@@ -128,7 +139,7 @@ const ViewProject: React.FC = () => {
 
         // Initialize phases with default sub-phases to ensure all are present
         const updatedPhases: Record<string, { items: PhaseItem[]; percentage: number }> = {};
-        Object.keys(phaseDefinitions).forEach((phaseKey) => {
+        phaseOrder.forEach((phaseKey) => {
           updatedPhases[phaseKey] = {
             items: defaultSubPhases[phaseKey as keyof typeof defaultSubPhases].map((item) => ({
               item,
@@ -145,7 +156,7 @@ const ViewProject: React.FC = () => {
         // Merge with saved phase data
         if (phaseData && phaseData.length > 0) {
           phaseData.forEach((phase: any) => {
-            const phaseKey = Object.keys(phaseDefinitions).find(
+            const phaseKey = phaseOrder.find(
               (key) => phaseDefinitions[key as keyof typeof phaseDefinitions].name === phase.phase_name
             );
             if (phaseKey && phase.items && phase.items.length > 0) {
@@ -213,8 +224,7 @@ const ViewProject: React.FC = () => {
     return <div className="p-6 text-red-600">{error || 'Project not found'}</div>;
   }
 
-  const phaseKeys = Object.keys(phaseDefinitions) as (keyof typeof phaseDefinitions)[];
-  const currentPhaseKey = phaseKeys.find((key) => key === currentPhase) || 'landPreConstruction';
+  const currentPhaseKey = phaseOrder.find((key) => key === currentPhase) || 'landPreConstruction';
   const phaseItems = project.phases?.[currentPhaseKey]?.items || [];
 
   console.log('Rendering ViewProject with phaseItems:', phaseItems); // Debug log
@@ -266,7 +276,7 @@ const ViewProject: React.FC = () => {
 
       {/* Phase Navigation Tabs */}
       <div className="flex space-x-2 mb-4 overflow-x-auto">
-        {phaseKeys.map((phaseKey, index) => (
+        {phaseOrder.map((phaseKey, index) => (
           <button
             key={phaseKey}
             className={`px-4 py-2 rounded-md whitespace-nowrap ${

@@ -182,7 +182,7 @@ const ProjectDetails: React.FC = () => {
 
         <table className="w-full border-collapse">
           <thead>
-            <tr className="bg-black text-white">
+            <tr className="bg-blue-600 text-white"> {/* Changed from bg-black to bg-blue-600 */}
               <th className="px-4 py-2">Item</th>
               <th className="px-4 py-2">Cost (INR)</th>
               <th className="px-4 py-2">Attachment</th>
@@ -246,13 +246,6 @@ const ProjectDetails: React.FC = () => {
             ))}
           </tbody>
         </table>
-
-        <button
-          className="mt-4 w-full bg-green-500 text-white py-2 rounded-md hover:bg-green-600"
-          onClick={() => console.log('Save details')}
-        >
-          Save Details
-        </button>
       </div>
     </div>
   );

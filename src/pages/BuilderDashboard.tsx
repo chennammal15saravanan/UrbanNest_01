@@ -418,7 +418,7 @@ const BuilderDashboard: React.FC = () => {
         </main>
 
         {/* Modal for New Project */}
-        <Modal show={isModalOpen} onHide={handleCloseModal} size="lg" scrollable>
+        <Modal show={isModalOpen} onHide={handleCloseModal} size="lg" scrollable className="custom-modal">
           <Modal.Header closeButton>
             <Modal.Title>Create a New Project</Modal.Title>
           </Modal.Header>
@@ -429,7 +429,7 @@ const BuilderDashboard: React.FC = () => {
               </div>
             )}
             <Form>
-              <Form.Group className="mb-3">
+              <Form.Group className="mb-3 form-group">
                 <Form.Label>Project Name:</Form.Label>
                 <Form.Control
                   type="text"
@@ -441,7 +441,7 @@ const BuilderDashboard: React.FC = () => {
                 />
               </Form.Group>
 
-              <Form.Group className="mb-3">
+              <Form.Group className="mb-3 form-group">
                 <Form.Label>Start Date:</Form.Label>
                 <Form.Control
                   type="date"
@@ -451,7 +451,7 @@ const BuilderDashboard: React.FC = () => {
                 />
               </Form.Group>
 
-              <Form.Group className="mb-3">
+              <Form.Group className="mb-3 form-group">
                 <Form.Label>End Date:</Form.Label>
                 <Form.Control
                   type="date"
@@ -461,7 +461,7 @@ const BuilderDashboard: React.FC = () => {
                 />
               </Form.Group>
 
-              <Form.Group className="mb-3">
+              <Form.Group className="mb-3 form-group">
                 <Form.Label>Total Square Feet Planned:</Form.Label>
                 <Form.Control
                   type="number"
@@ -472,7 +472,7 @@ const BuilderDashboard: React.FC = () => {
                 />
               </Form.Group>
 
-              <Form.Group className="mb-3">
+              <Form.Group className="mb-3 form-group">
                 <Form.Label>Estimated Cost (INR):</Form.Label>
                 <Form.Control
                   type="number"
@@ -483,7 +483,7 @@ const BuilderDashboard: React.FC = () => {
                 />
               </Form.Group>
 
-              <Form.Group className="mb-3">
+              <Form.Group className="mb-3 form-group">
                 <Form.Label>Type of Construction:</Form.Label>
                 <Form.Select
                   name="constructionType"
@@ -499,7 +499,7 @@ const BuilderDashboard: React.FC = () => {
 
               {formData.constructionType === 'Residential' && (
                 <>
-                  <Form.Group className="mb-3">
+                  <Form.Group className="mb-3 form-group">
                     <Form.Label>Number of Floors:</Form.Label>
                     <Form.Control
                       type="number"
@@ -509,7 +509,7 @@ const BuilderDashboard: React.FC = () => {
                     />
                   </Form.Group>
                   {formData.numFloors > 0 && (
-                    <Form.Group className="mb-3">
+                    <Form.Group className="mb-3 form-group">
                       <Form.Label>Floor Details:</Form.Label>
                       {formData.floors.map((floor, index) => (
                         <div key={index} className="border p-3 mt-2 rounded">
@@ -552,7 +552,7 @@ const BuilderDashboard: React.FC = () => {
 
               <h4 className="mt-4 font-medium">Phases</h4>
               {Object.entries(formData.phases).map(([phase, { enabled, percentage }]) => (
-                <Form.Group className="mb-3" key={phase}>
+                <Form.Group className="mb-3 form-group" key={phase}>
                   <Form.Check
                     type="checkbox"
                     label={
@@ -592,6 +592,95 @@ const BuilderDashboard: React.FC = () => {
             </Button>
           </Modal.Footer>
         </Modal>
+
+        {/* Embedded CSS for Modal Styling */}
+        <style>
+          {`
+            /* Custom styles for BuilderDashboard Modal */
+            .custom-modal .modal-content {
+              border-radius: 8px;
+              box-shadow: 0px 5px 15px rgba(0, 0, 0, 0.2);
+            }
+
+            .custom-modal .modal-header {
+              border-bottom: 1px solid #e5e5e5;
+            }
+
+            .custom-modal .modal-footer {
+              border-top: 1px solid #e5e5e5;
+              display: flex;
+              justify-content: flex-end;
+              gap: 10px;
+            }
+
+            .custom-modal .modal-title {
+              font-size: 1.25rem;
+              font-weight: bold;
+            }
+
+            .custom-modal .form-group {
+              margin-bottom: 15px;
+              text-align: left;
+            }
+
+            .custom-modal .form-label {
+              font-weight: bold;
+              margin-bottom: 5px;
+              text-align: left;
+            }
+
+            .custom-modal .form-control,
+            .custom-modal .form-select {
+              width: 100%;
+              padding: 8px;
+              margin-top: 5px;
+              border: 1px solid #ccc;
+              border-radius: 5px;
+            }
+
+            .custom-modal .phase-group {
+              display: flex;
+              flex-direction: column;
+              gap: 8px;
+            }
+
+            .custom-modal .phase-checkbox {
+              display: flex;
+              align-items: center;
+              gap: 8px;
+            }
+
+            .custom-modal .phase-checkbox input[type="checkbox"] {
+              margin: 0;
+            }
+
+            .custom-modal .phase-checkbox label {
+              margin: 0;
+              font-weight: normal;
+            }
+
+            .custom-modal .phase-percentage-input {
+              width: 60px;
+              padding: 6px;
+              border: 1px solid #ccc;
+              border-radius: 5px;
+            }
+
+            .custom-modal .btn-secondary {
+              background-color: #6c757d;
+              border-color: #6c757d;
+              padding: 8px 16px;
+              border-radius: 5px;
+            }
+
+            .custom-modal .btn-primary {
+              background-color: #007bff;
+              border-color: #007bff;
+              padding: 8px 16px;
+              border-radius: 5px;
+            }
+          `}
+        </style>
       </div>
     </div>
   );

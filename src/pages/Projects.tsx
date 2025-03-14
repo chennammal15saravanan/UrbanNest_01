@@ -88,7 +88,6 @@ const Projects: React.FC = () => {
           <table className="min-w-full border-collapse">
             <thead>
               <tr className="bg-gray-200 text-gray-700">
-                <th className="px-4 py-3 text-left text-sm font-semibold">ID</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold">Project Name</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold">Start Date</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold">End Date</th>
@@ -107,7 +106,6 @@ const Projects: React.FC = () => {
                   className="border-b hover:bg-gray-100 cursor-pointer"
                   onClick={() => handleProjectClick(project.id)}
                 >
-                  <td className="px-4 py-3 text-sm text-gray-900">{project.id}</td>
                   <td className="px-4 py-3 text-sm text-gray-900">
                     <Link 
                       to={`/builder/dashboard/projects/${project.id}`} 

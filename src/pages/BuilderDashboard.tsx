@@ -469,6 +469,7 @@ const BuilderDashboard: React.FC = () => {
                   value={formData.totalSqFeet}
                   onChange={handleInputChange}
                   placeholder="Enter total square feet"
+                  min="0"
                 />
               </Form.Group>
 
@@ -480,6 +481,7 @@ const BuilderDashboard: React.FC = () => {
                   value={formData.estimatedCost}
                   onChange={handleInputChange}
                   placeholder="Enter estimated cost in INR"
+                  min="0"
                 />
               </Form.Group>
 

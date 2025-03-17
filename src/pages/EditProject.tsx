@@ -1,10 +1,12 @@
-import React, { useEffect, useState, ChangeEvent } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase'; // Assuming supabase is configured in a separate file
-import { Modal, Button, Form, Tabs, Tab } from 'react-bootstrap';
+import { supabase } from '../lib/supabase';
+import { Button, Tabs, Tab, Form, Row, Col } from 'react-bootstrap';
+import { toast } from 'react-toastify';
 import 'bootstrap/dist/css/bootstrap.min.css';
+import 'react-toastify/dist/ReactToastify.css';
 
-// Define interfaces for type safety
+// Interfaces
 interface FormData {
   projectName: string;
   startDate: string;
@@ -16,10 +18,10 @@ interface FormData {
 }
 
 interface PhaseDetail {
-  id?: string;
   item: string;
   cost: string;
   attachment: string;
+  originalFileName: string; // Original file name as uploaded
   status: string;
   completion: string;
   comments: string;
@@ -49,53 +51,13 @@ const EditProject: React.FC = () => {
   const [totalCost, setTotalCost] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-
-  const defaultSubPhases = {
-    landPreConstruction: [
-      'Legal Documentation', 'Title Deed Verification', 'Government Approvals & Permits',
-      'Geotechnical Soil Report', 'Site Survey (Topography & Mapping)', 'Floor Plans & Site Layouts',
-      'Structural Engineering Plans', 'Environmental Clearance', 'Municipality Approvals (Building Permit)',
-      'Fire & Safety Approval', 'Electricity & Water Supply Sanctions', 'Project Cost Estimation & Budgeting',
-      'Contractor Bidding & Tendering', 'Material & Labor Cost Estimation', 'Land Leveling & Clearing',
-      'Temporary Site Office Setup', 'Demolition of Existing Structures',
-    ],
-    foundationStructural: [
-      'Digging & Grading the Site', 'Soil Treatment for Pests & Waterproofing', 'Footings & Pile Foundation',
-      'Concrete Slabs & Columns', 'Reinforced Concrete Plinth', 'Waterproofing & Curing',
-    ],
-    superstructure: [
-      'RCC (Reinforced Concrete Columns & Beams)', 'Slab Construction for Each Floor',
-      'Exterior & Interior Wall Masonry', 'Partition Walls in Apartments', 'Casting of Roof Slabs',
-      'Waterproofing the Roof',
-    ],
-    internalExternal: [
-      'Underground Plumbing & Drainage', 'Electrical Wiring & Ducting Installation',
-      'Air Conditioning & Ventilation Systems', 'Fire Safety Sprinklers & Smoke Detectors',
-      'Interior Wall Plastering', 'Exterior Wall Rendering', 'Main Door, Balcony Doors',
-      'Window Fittings', 'Marble, Tiles, or Wooden Flooring', 'Bathroom & Kitchen Tiling',
-      'Primer & Painting (Interior & Exterior)', 'Textured Finishing for Facade',
-    ],
-    finalInstallations: [
-      'POP False Ceilings & LED Lighting Setup', 'Kitchen & Bathroom Cabinets',
-      'Wardrobes & Storage Units', 'Sink, Faucets, Shower, Toilet Installation',
-      'Drainage & Sewage Connectivity', 'Switchboards, Light Fixtures',
-      'Smart Home Automation (if applicable)',
-    ],
-    testingQuality: [
-      'Bathroom, Kitchen, and Roof Checks', 'Load Testing for Electrical Systems',
-      'Fire Alarm & Safety Compliance Check', 'Fixing Minor Issues Before Handover',
-    ],
-    handoverCompletion: [
-      'Builder Walkthrough with Buyer', 'Final Approval from Authorities', 'Keys Given to Buyer',
-      'Documentation (Occupancy Certificate, Warranty Papers, etc.)', '6-Months to 1-Year Maintenance Period',
-    ],
-  };
+  const [canEdit, setCanEdit] = useState<boolean>(false);
 
   const phaseNameMapping: Record<string, string> = {
     landPreConstruction: 'Land & Pre-Construction',
     foundationStructural: 'Foundation & Structural Construction',
     superstructure: 'Superstructure Construction',
-    internalExternal: 'Internal & External',
+    internalExternal: 'Internal & External Works',
     finalInstallations: 'Final Installations',
     testingQuality: 'Testing & Quality',
     handoverCompletion: 'Handover & Completion',
@@ -103,7 +65,6 @@ const EditProject: React.FC = () => {
 
   useEffect(() => {
     const fetchProject = async () => {
-      console.log('Fetching project with ID:', id);
       if (!id) {
         setError('Project ID is missing');
         setLoading(false);
@@ -148,107 +109,34 @@ const EditProject: React.FC = () => {
           })) || [],
         });
 
-        const phaseMap: Record<string, PhaseDetail[]> = {
-          landPreConstruction: defaultSubPhases.landPreConstruction.map((item) => ({
-            item,
-            cost: '',
-            attachment: '',
-            status: 'Pending',
-            completion: '0',
-            comments: '',
-          })),
-          foundationStructural: defaultSubPhases.foundationStructural.map((item) => ({
-            item,
-            cost: '',
-            attachment: '',
-            status: 'Pending',
-            completion: '0',
-            comments: '',
-          })),
-          superstructure: defaultSubPhases.superstructure.map((item) => ({
-            item,
-            cost: '',
-            attachment: '',
-            status: 'Pending',
-            completion: '0',
-            comments: '',
-          })),
-          internalExternal: defaultSubPhases.internalExternal.map((item) => ({
-            item,
-            cost: '',
-            attachment: '',
-            status: 'Pending',
-            completion: '0',
-            comments: '',
-          })),
-          finalInstallations: defaultSubPhases.finalInstallations.map((item) => ({
-            item,
-            cost: '',
-            attachment: '',
-            status: 'Pending',
-            completion: '0',
-            comments: '',
-          })),
-          testingQuality: defaultSubPhases.testingQuality.map((item) => ({
-            item,
-            cost: '',
-            attachment: '',
-            status: 'Pending',
-            completion: '0',
-            comments: '',
-          })),
-          handoverCompletion: defaultSubPhases.handoverCompletion.map((item) => ({
-            item,
-            cost: '',
-            attachment: '',
-            status: 'Pending',
-            completion: '0',
-            comments: '',
-          })),
-        };
-
+        const phaseMap: Record<string, PhaseDetail[]> = {};
         if (phaseData && phaseData.length > 0) {
           phaseData.forEach((phase: any) => {
             const phaseKey = Object.keys(phaseNameMapping).find(
               (key) => phaseNameMapping[key] === phase.phase_name
             );
-            if (phaseKey && phase.items && phase.items.length > 0) {
-              const savedItemsMap = new Map(
-                phase.items.map((item: any) => [
-                  item.item,
-                  {
-                    id: item.id,
-                    item: item.item || '',
-                    cost: item.cost ? String(item.cost) : '',
-                    attachment: item.attachment || '',
-                    status: item.status || 'Pending',
-                    completion: item.completion ? String(item.completion) : '0',
-                    comments: item.comments || '',
-                  },
-                ])
-              );
-              phaseMap[phaseKey] = defaultSubPhases[phaseKey as keyof typeof defaultSubPhases].map(
-                (defaultItem) => savedItemsMap.get(defaultItem) || {
-                  item: defaultItem,
-                  cost: '',
-                  attachment: '',
-                  status: 'Pending',
-                  completion: '0',
-                  comments: '',
-                }
-              );
+            if (phaseKey && phase.items) {
+              phaseMap[phaseKey] = phase.items.map((item: any) => ({
+                item: item.item || '',
+                cost: item.cost ? String(item.cost) : '',
+                attachment: item.attachment || '',
+                originalFileName: item.originalFileName || '',
+                status: item.status || 'Pending',
+                completion: item.completion ? String(item.completion) : '0',
+                comments: item.comments || '',
+              }));
             }
           });
         }
 
-        const initialTotalCost = calculateTotalCost(phaseMap);
-        setTotalCost(initialTotalCost);
+        setPhases((prev) => ({ ...prev, ...phaseMap }));
+        setTotalCost(calculateTotalCost(phaseMap));
 
-        console.log('Initialized Phase Map:', phaseMap);
-        setPhases(phaseMap);
+        const { data: { user } } = await supabase.auth.getUser();
+        setCanEdit(!!user);
       } catch (error) {
         console.error('Error fetching project:', error);
-        setError(`Failed to fetch project: ${(error as Error).message || 'An unknown error occurred'}`);
+        setError(`Failed to fetch project: ${(error as Error).message || 'Unknown error'}`);
       } finally {
         setLoading(false);
       }
@@ -267,40 +155,15 @@ const EditProject: React.FC = () => {
     }, 0);
   };
 
-  const handleInputChange = (
-    e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
-  ) => {
+  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleFloorChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const numFloors = parseInt(e.target.value) || 0;
-    setFormData((prev) => ({
-      ...prev,
-      numFloors,
-      floors: Array.from({ length: numFloors }, (_, i) => ({
-        floorNumber: i + 1,
-        numApartments: prev.floors[i]?.numApartments || 0,
-        apartmentTypes: prev.floors[i]?.apartmentTypes || [],
-      })),
-    }));
-  };
-
-  const handleApartmentChange = (floorIndex: number, field: string, value: any) => {
+  const handleFloorChange = (index: number, field: string, value: string | number | string[]) => {
     setFormData((prev) => {
       const updatedFloors = [...prev.floors];
-      if (field === 'apartmentTypes') {
-        const currentTypes = updatedFloors[floorIndex].apartmentTypes || [];
-        updatedFloors[floorIndex].apartmentTypes = currentTypes.includes(value)
-          ? currentTypes.filter((type) => type !== value)
-          : [...currentTypes, value];
-      } else if (field === 'numApartments') {
-        updatedFloors[floorIndex].numApartments = parseInt(value) || 0;
-      }
+      (updatedFloors[index] as any)[field] = value;
       return { ...prev, floors: updatedFloors };
     });
   };
@@ -308,27 +171,106 @@ const EditProject: React.FC = () => {
   const handlePhaseDetailChange = (
     phaseName: string,
     index: number,
-    field: keyof PhaseDetail,
-    value: string
+    field: string,
+    value: string | File | null
   ) => {
     setPhases((prev) => {
-      const updatedPhase = [...prev[phaseName]];
-      updatedPhase[index] = { ...updatedPhase[index], [field]: value };
-      const newPhases = { ...prev, [phaseName]: updatedPhase };
-      if (field === 'cost') {
-        const newTotalCost = calculateTotalCost(newPhases);
-        setTotalCost(newTotalCost);
-      }
-      return newPhases;
+      const updatedPhases = { ...prev };
+      updatedPhases[phaseName][index] = { ...updatedPhases[phaseName][index], [field]: value };
+      return updatedPhases;
     });
+    if (field === 'cost') {
+      setTotalCost(calculateTotalCost(phases));
+    }
+  };
+
+  const handleFileUpload = async (
+    phaseName: string,
+    index: number,
+    file: File | null
+  ) => {
+    if (!file || !id) {
+      toast.error('No file selected or project ID missing');
+      return;
+    }
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('User not authenticated. Please log in to upload files.');
+      }
+
+      if (file.type !== 'application/pdf') {
+        throw new Error('Only PDF files are allowed');
+      }
+      const maxSize = 10 * 1024 * 1024; // 10MB limit
+      if (file.size > maxSize) {
+        throw new Error('File size exceeds 10MB limit');
+      }
+
+      const uniqueFileName = `${id}/${phaseName}/${Date.now()}_${file.name}`; // Unique file name to avoid conflicts
+      console.log('Uploading file to:', uniqueFileName);
+
+      const { error: uploadError } = await supabase.storage
+        .from('project-files')
+        .upload(uniqueFileName, file, { upsert: true });
+
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        throw new Error(`Upload failed: ${uploadError.message}`);
+      }
+
+      const { data } = supabase.storage.from('project-files').getPublicUrl(uniqueFileName);
+      const fileUrl = data.publicUrl;
+      console.log('File URL:', fileUrl);
+
+      // Update phase detail with both attachment URL and original file name
+      handlePhaseDetailChange(phaseName, index, 'attachment', fileUrl);
+      handlePhaseDetailChange(phaseName, index, 'originalFileName', file.name);
+      console.log('Updated phase detail:', phases[phaseName][index]); // Debugging log
+      toast.success('File uploaded successfully!');
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      toast.error(`Failed to upload file: ${(error as Error).message || 'Unknown error'}`);
+    }
+  };
+
+  const handleRemoveFile = async (phaseName: string, index: number) => {
+    if (!canEdit) {
+      toast.error('You do not have permission to remove files');
+      return;
+    }
+
+    const attachment = phases[phaseName][index].attachment;
+    if (!attachment || !id) {
+      toast.error('No file to remove or project ID missing');
+      return;
+    }
+
+    try {
+      const filePath = attachment.split('/project-files/')[1];
+      const { error: deleteError } = await supabase.storage
+        .from('project-files')
+        .remove([filePath]);
+
+      if (deleteError) {
+        console.error('Remove error:', deleteError);
+        throw new Error(`Remove failed: ${deleteError.message}`);
+      }
+
+      handlePhaseDetailChange(phaseName, index, 'attachment', '');
+      handlePhaseDetailChange(phaseName, index, 'originalFileName', '');
+      toast.success('File removed successfully!');
+    } catch (error) {
+      console.error('Error removing file:', error);
+      toast.error(`Failed to remove file: ${(error as Error).message || 'Unknown error'}`);
+    }
   };
 
   const handleSaveProject = async () => {
     try {
       if (!id) throw new Error('Project ID is missing');
       if (!formData.projectName.trim()) throw new Error('Project name is required');
-
-      console.log('Saving project with data:', formData);
 
       const { error: updateError } = await supabase
         .from('project_users')
@@ -368,22 +310,22 @@ const EditProject: React.FC = () => {
         items: phaseDetails.map((detail) => ({
           item: detail.item,
           cost: detail.cost ? parseInt(detail.cost) : null,
-          attachment: detail.attachment || null,
+          attachment: detail.attachment || null, // Ensure attachment is saved
+          originalFileName: detail.originalFileName || null, // Ensure originalFileName is saved
           status: detail.status || 'Pending',
           completion: detail.completion || '0',
           comments: detail.comments || null,
         })),
       }));
 
-      console.log('Phase Inserts:', phaseInserts);
       const { error: phaseError } = await supabase.from('project_phases').insert(phaseInserts);
       if (phaseError) throw phaseError;
 
-      console.log('Project saved successfully');
-      navigate('/builder/dashboard/projects');
+      toast.success('Project saved successfully!');
+      navigate(`/builder/dashboard/projects/view/${id}`); // Navigate to View Project page
     } catch (error) {
       console.error('Error saving project:', error);
-      setError(`Failed to update project: ${(error as Error).message || 'An unknown error occurred'}`);
+      toast.error(`Failed to update project: ${(error as Error).message || 'Unknown error'}`);
     }
   };
 
@@ -392,184 +334,167 @@ const EditProject: React.FC = () => {
 
   return (
     <div style={styles.container}>
-      <h2 style={styles.header}>Edit Project: {formData.projectName || 'Loading...'}</h2>
+      <h2 style={styles.header}>Edit Project: {formData.projectName}</h2>
       <div style={styles.card}>
-        <Form style={styles.form}>
-          <Form.Group style={styles.formGroup}>
-            <Form.Label style={styles.label}>Project Name:</Form.Label>
-            <Form.Control
-              type="text"
-              name="projectName"
-              value={formData.projectName}
-              onChange={handleInputChange}
-              placeholder="Enter project name"
-              required
-              style={styles.input}
-            />
-          </Form.Group>
-
-          {/* Start Date and End Date in the same line */}
-          <div style={styles.dateContainer}>
-            <Form.Group style={styles.dateField}>
-              <Form.Label style={styles.label}>Start Date:</Form.Label>
-              <Form.Control
-                type="date"
-                name="startDate"
-                value={formData.startDate}
-                onChange={handleInputChange}
-                style={styles.dateInput}
-              />
-            </Form.Group>
-            <Form.Group style={styles.dateField}>
-              <Form.Label style={styles.label}>End Date:</Form.Label>
-              <Form.Control
-                type="date"
-                name="endDate"
-                value={formData.endDate}
-                onChange={handleInputChange}
-                style={styles.dateInput}
-              />
-            </Form.Group>
-          </div>
-
-          <Form.Group style={styles.formGroup}>
-            <Form.Label style={styles.label}>Total Square Feet Planned:</Form.Label>
-            <Form.Control
-              type="number"
-              name="totalSquareFeet"
-              value={formData.totalSquareFeet}
-              onChange={handleInputChange}
-              placeholder="Enter total square feet"
-              style={styles.input}
-            />
-          </Form.Group>
-
-          {/* Type of Construction and Number of Floors in the same line */}
-          <div style={styles.constructionFloorsContainer}>
-            <Form.Group style={styles.constructionField}>
-              <Form.Label style={styles.label}>Type of Construction:</Form.Label>
-              <Form.Select
-                name="constructionType"
-                value={formData.constructionType}
-                onChange={handleInputChange}
-                style={styles.constructionInput}
-              >
-                <option value="">Select</option>
-                <option value="Residential">Residential</option>
-                <option value="Commercial">Commercial</option>
-              </Form.Select>
-            </Form.Group>
-
-            {formData.constructionType === "Residential" && (
-              <Form.Group style={styles.floorsField}>
-                <Form.Label style={styles.label}>Number of Floors:</Form.Label>
-                <Form.Control
-                  type="number"
-                  name="numFloors"
-                  value={formData.numFloors}
-                  onChange={handleFloorChange}
-                  style={styles.floorsInput}
-                />
-              </Form.Group>
-            )}
-          </div>
-
-          {formData.constructionType === "Residential" && formData.numFloors > 0 && (
-            <div style={styles.formGroup}>
-              {formData.floors.map((floor, index) => (
-                <div key={index} style={styles.floorCard}>
-                  <h5 style={styles.floorHeader}>Floor {floor.floorNumber}</h5>
-                  <Form.Label style={styles.label}>Number of Apartments:</Form.Label>
+        <div style={styles.form}>
+          <Form>
+            <Row>
+              <Col md={6}>
+                <Form.Group controlId="projectName">
+                  <Form.Label>Project Name</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="projectName"
+                    value={formData.projectName}
+                    onChange={handleFormChange}
+                    placeholder="Enter project name"
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={3}>
+                <Form.Group controlId="startDate">
+                  <Form.Label>Start Date</Form.Label>
+                  <Form.Control
+                    type="date"
+                    name="startDate"
+                    value={formData.startDate}
+                    onChange={handleFormChange}
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={3}>
+                <Form.Group controlId="endDate">
+                  <Form.Label>End Date</Form.Label>
+                  <Form.Control
+                    type="date"
+                    name="endDate"
+                    value={formData.endDate}
+                    onChange={handleFormChange}
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
+            <Row>
+              <Col md={6}>
+                <Form.Group controlId="totalSquareFeet">
+                  <Form.Label>Total Square Feet</Form.Label>
                   <Form.Control
                     type="number"
-                    value={floor.numApartments}
-                    onChange={(e) => handleApartmentChange(index, "numApartments", e.target.value)}
-                    style={styles.input}
+                    name="totalSquareFeet"
+                    value={formData.totalSquareFeet}
+                    onChange={handleFormChange}
+                    placeholder="Enter total square feet"
                   />
-                  <Form.Label style={styles.label}>Apartment Types:</Form.Label>
-                  <div style={styles.checkboxGroup}>
-                    {['1BHK', '2BHK', '3BHK'].map((type) => (
-                      <Form.Check
-                        key={type}
-                        type="checkbox"
-                        label={type}
-                        checked={floor.apartmentTypes.includes(type)}
-                        onChange={() => handleApartmentChange(index, "apartmentTypes", type)}
-                        style={styles.checkbox}
-                      />
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group controlId="constructionType">
+                  <Form.Label>Construction Type</Form.Label>
+                  <Form.Control
+                    as="select"
+                    name="constructionType"
+                    value={formData.constructionType}
+                    onChange={handleFormChange}
+                  >
+                    <option value="Residential">Residential</option>
+                    <option value="Commercial">Commercial</option>
+                    <option value="Industrial">Industrial</option>
+                  </Form.Control>
+                </Form.Group>
+              </Col>
+            </Row>
+            {formData.constructionType === 'Residential' && (
+              <Row>
+                <Col md={12}>
+                  <Form.Group controlId="numFloors">
+                    <Form.Label>Number of Floors</Form.Label>
+                    <Form.Control
+                      type="number"
+                      name="numFloors"
+                      value={formData.numFloors}
+                      onChange={handleFormChange}
+                      min="0"
+                    />
+                  </Form.Group>
+                </Col>
+                {Array.from({ length: formData.numFloors }, (_, i) => i + 1).map((floorNum) => {
+                  const floor = formData.floors.find((f) => f.floorNumber === floorNum) || {
+                    floorNumber: floorNum,
+                    numApartments: 0,
+                    apartmentTypes: [],
+                  };
+                  return (
+                    <Col md={12} key={floorNum} style={styles.floorCard}>
+                      <h5>Floor {floorNum}</h5>
+                      <Row>
+                        <Col md={6}>
+                          <Form.Group controlId={`numApartments-${floorNum}`}>
+                            <Form.Label>Number of Apartments</Form.Label>
+                            <Form.Control
+                              type="number"
+                              value={floor.numApartments}
+                              onChange={(e) =>
+                                handleFloorChange(floorNum - 1, 'numApartments', parseInt(e.target.value) || 0)
+                              }
+                              min="0"
+                            />
+                          </Form.Group>
+                        </Col>
+                        <Col md={6}>
+                          <Form.Group controlId={`apartmentTypes-${floorNum}`}>
+                            <Form.Label>Apartment Types</Form.Label>
+                            <Form.Control
+                              type="text"
+                              value={floor.apartmentTypes.join(', ')}
+                              onChange={(e) =>
+                                handleFloorChange(floorNum - 1, 'apartmentTypes', e.target.value.split(',').map((t) => t.trim()))
+                              }
+                              placeholder="e.g., 1BHK, 2BHK"
+                            />
+                          </Form.Group>
+                        </Col>
+                      </Row>
+                    </Col>
+                  );
+                })}
+              </Row>
+            )}
+          </Form>
 
           <h4 style={styles.sectionHeader}>Phase Details</h4>
           <Tabs defaultActiveKey="landPreConstruction" id="phase-tabs" style={styles.tabs}>
-            <Tab eventKey="landPreConstruction" title="1. Land & Pre-Construction">
-              <PhaseTable
-                phaseName="landPreConstruction"
-                phaseDetails={phases.landPreConstruction}
-                onChange={handlePhaseDetailChange}
-              />
-            </Tab>
-            <Tab eventKey="foundationStructural" title="2. Foundation & Structural">
-              <PhaseTable
-                phaseName="foundationStructural"
-                phaseDetails={phases.foundationStructural}
-                onChange={handlePhaseDetailChange}
-              />
-            </Tab>
-            <Tab eventKey="superstructure" title="3. Superstructure">
-              <PhaseTable
-                phaseName="superstructure"
-                phaseDetails={phases.superstructure}
-                onChange={handlePhaseDetailChange}
-              />
-            </Tab>
-            <Tab eventKey="internalExternal" title="4. Internal & External Works">
-              <PhaseTable
-                phaseName="internalExternal"
-                phaseDetails={phases.internalExternal}
-                onChange={handlePhaseDetailChange}
-              />
-            </Tab>
-            <Tab eventKey="finalInstallations" title="5. Final Installations">
-              <PhaseTable
-                phaseName="finalInstallations"
-                phaseDetails={phases.finalInstallations}
-                onChange={handlePhaseDetailChange}
-              />
-            </Tab>
-            <Tab eventKey="testingQuality" title="6. Testing & Quality">
-              <PhaseTable
-                phaseName="testingQuality"
-                phaseDetails={phases.testingQuality}
-                onChange={handlePhaseDetailChange}
-              />
-            </Tab>
-            <Tab eventKey="handoverCompletion" title="7. Handover">
-              <PhaseTable
-                phaseName="handoverCompletion"
-                phaseDetails={phases.handoverCompletion}
-                onChange={handlePhaseDetailChange}
-              />
-            </Tab>
+            {Object.keys(phases).map((phaseKey) => (
+              <Tab
+                key={phaseKey}
+                eventKey={phaseKey}
+                title={`${Object.keys(phaseNameMapping).indexOf(phaseKey) + 1}. ${phaseNameMapping[phaseKey]}`}
+              >
+                <PhaseTable
+                  phaseName={phaseKey}
+                  phaseDetails={phases[phaseKey]}
+                  onDetailChange={handlePhaseDetailChange}
+                  onFileUpload={handleFileUpload}
+                  onRemoveFile={canEdit ? handleRemoveFile : undefined}
+                />
+              </Tab>
+            ))}
           </Tabs>
 
           <div style={styles.totalCost}>
             <h4 style={styles.totalCostHeader}>Total Project Cost: ₹{totalCost.toLocaleString()}</h4>
           </div>
 
-          <div style={styles.buttonGroup}>
-            <Button variant="danger" onClick={() => navigate('/builder/dashboard/projects')}>
-              Cancel
-            </Button>
-            <Button variant="success" onClick={handleSaveProject} style={styles.saveButton}>
-              Save Changes
-            </Button>
-          </div>
-        </Form>
+          <Button variant="primary" onClick={handleSaveProject}>
+            Save Changes
+          </Button>
+          <Button
+            variant="secondary"
+            style={{ marginLeft: '10px' }}
+            onClick={() => navigate(`/builder/dashboard/projects/view/${id}`)}
+          >
+            Cancel
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -578,75 +503,107 @@ const EditProject: React.FC = () => {
 const PhaseTable: React.FC<{
   phaseName: string;
   phaseDetails: PhaseDetail[];
-  onChange: (phaseName: string, index: number, field: keyof PhaseDetail, value: string) => void;
-}> = ({ phaseName, phaseDetails, onChange }) => {
+  onDetailChange: (phaseName: string, index: number, field: string, value: string | File | null) => void;
+  onFileUpload: (phaseName: string, index: number, file: File | null) => void;
+  onRemoveFile?: (phaseName: string, index: number) => void;
+}> = ({ phaseName, phaseDetails, onDetailChange, onFileUpload, onRemoveFile }) => {
+  const shortenFileName = (fileName: string, maxLength = 15) => {
+    if (fileName.length <= maxLength) return fileName;
+    const extension = fileName.split('.').pop();
+    const nameWithoutExt = fileName.slice(0, -extension!.length - 1);
+    return `${nameWithoutExt.slice(0, maxLength - 5 - extension!.length)}...${extension}`;
+  };
+
   return (
     <div style={styles.tableContainer}>
       <table className="table table-bordered" style={styles.table}>
         <thead>
           <tr>
-            <th>Item</th>
-            <th>Cost (INR)</th>
-            <th>Attachment</th>
-            <th>Status</th>
-            <th>% Completion</th>
-            <th>Comments</th>
+            <th style={styles.tableCell}>Task</th>
+            <th style={styles.tableCell}>Cost (INR)</th>
+            <th style={styles.tableCell}>Attachment</th>
+            <th style={styles.tableCell}>Status</th>
+            <th style={styles.tableCell}>% Completion</th>
+            <th style={styles.tableCell}>Comments</th>
           </tr>
         </thead>
         <tbody>
           {phaseDetails.map((detail, index) => (
-            <tr key={index}>
-              <td>{detail.item}</td>
-              <td>
+            <tr key={index} style={styles.tableRow}>
+              <td style={styles.tableCell}>
+                <Form.Control
+                  type="text"
+                  value={detail.item}
+                  onChange={(e) => onDetailChange(phaseName, index, 'item', e.target.value)}
+                  placeholder="Enter task"
+                />
+              </td>
+              <td style={styles.tableCell}>
                 <Form.Control
                   type="number"
-                  value={detail.cost}
-                  onChange={(e) => onChange(phaseName, index, 'cost', e.target.value)}
-                  style={styles.tableInput}
+                  value={detail.cost || ''}
+                  onChange={(e) => onDetailChange(phaseName, index, 'cost', e.target.value)}
+                  placeholder="Enter cost"
                 />
               </td>
-              <td>
+              <td style={styles.tableCell}>
                 <Form.Control
                   type="file"
-                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                    onChange(phaseName, index, 'attachment', e.target.files?.[0]?.name || '')
-                  }
-                  style={styles.tableInput}
+                  accept="application/pdf"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] || null;
+                    onFileUpload(phaseName, index, file);
+                  }}
                 />
-                {detail.attachment && <span>{detail.attachment}</span>}
+                {detail.attachment && (
+                  <div>
+                    <a
+                      href={detail.attachment}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ color: '#007bff', textDecoration: 'underline', marginRight: '10px' }}
+                    >
+                      {shortenFileName(detail.originalFileName || 'Unknown File')}
+                    </a>
+                    {onRemoveFile && (
+                      <Button
+                        variant="link"
+                        style={{ color: 'red' }}
+                        onClick={() => onRemoveFile(phaseName, index)}
+                      >
+                        Remove
+                      </Button>
+                    )}
+                  </div>
+                )}
               </td>
-              <td>
-                <Form.Select
+              <td style={styles.tableCell}>
+                <Form.Control
+                  as="select"
                   value={detail.status}
-                  onChange={(e) => onChange(phaseName, index, 'status', e.target.value)}
-                  style={styles.tableInput}
+                  onChange={(e) => onDetailChange(phaseName, index, 'status', e.target.value)}
                 >
                   <option value="Pending">Pending</option>
                   <option value="In Progress">In Progress</option>
                   <option value="Completed">Completed</option>
-                </Form.Select>
+                </Form.Control>
               </td>
-              <td>
+              <td style={styles.tableCell}>
                 <Form.Control
                   type="number"
                   value={detail.completion}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    if (value === '' || (parseInt(value) >= 0 && parseInt(value) <= 100)) {
-                      onChange(phaseName, index, 'completion', value);
-                    }
-                  }}
+                  onChange={(e) => onDetailChange(phaseName, index, 'completion', e.target.value)}
                   min="0"
                   max="100"
-                  style={styles.tableInput}
                 />
+                %
               </td>
-              <td>
+              <td style={styles.tableCell}>
                 <Form.Control
-                  as="textarea"
-                  value={detail.comments}
-                  onChange={(e) => onChange(phaseName, index, 'comments', e.target.value)}
-                  style={styles.tableTextarea}
+                  type="text"
+                  value={detail.comments || ''}
+                  onChange={(e) => onDetailChange(phaseName, index, 'comments', e.target.value)}
+                  placeholder="Enter comments"
                 />
               </td>
             </tr>
@@ -657,154 +614,31 @@ const PhaseTable: React.FC<{
   );
 };
 
-// Inline styles for left alignment and design
+// Inline styles (unchanged)
 const styles: { [key: string]: React.CSSProperties } = {
-  container: {
-    padding: '24px',
-    textAlign: 'left',
-    width: '100%', // Full width for the container
-    margin: '0',
-  },
-  header: {
-    fontSize: '24px',
-    fontWeight: 'bold',
-    marginBottom: '24px',
-    textAlign: 'left',
-  },
+  container: { padding: '24px', textAlign: 'left', width: '100%', margin: '0' },
+  header: { fontSize: '24px', fontWeight: 'bold', marginBottom: '24px', textAlign: 'left' },
   card: {
     backgroundColor: '#fff',
     padding: '16px',
     borderRadius: '8px',
     boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-    width: '100%', // Full width for the card
+    width: '100%',
     boxSizing: 'border-box',
-    border: '1px solid #dee2e6', // Ensure the border spans the full width
-  },
-  form: {
-    textAlign: 'left',
-  },
-  formGroup: {
-    marginBottom: '16px',
-  },
-  label: {
-    textAlign: 'left',
-    display: 'block',
-  },
-  input: {
-    width: '100%',
-    maxWidth: '500px',
-  },
-  dateContainer: {
-    display: 'flex',
-    gap: '16px',
-    flexWrap: 'nowrap', // Keep Start Date and End Date in the same line
-    marginBottom: '16px',
-    overflowX: 'auto', // Allow horizontal scrolling if needed
-  },
-  dateField: {
-    flex: '1',
-    minWidth: '200px', // Ensure fields don't get too small
-  },
-  dateInput: {
-    width: '100%',
-  },
-  constructionFloorsContainer: {
-    display: 'flex',
-    gap: '16px',
-    flexWrap: 'nowrap', // Keep Type of Construction and Number of Floors in the same line
-    marginBottom: '16px',
-    overflowX: 'auto', // Allow horizontal scrolling if needed
-  },
-  constructionField: {
-    flex: '1',
-    minWidth: '200px', // Ensure field doesn't get too small
-  },
-  constructionInput: {
-    width: '100%',
-  },
-  floorsField: {
-    flex: '1',
-    minWidth: '200px', // Ensure field doesn't get too small
-  },
-  floorsInput: {
-    width: '100%',
-  },
-  floorCard: {
     border: '1px solid #dee2e6',
-    padding: '12px',
-    marginTop: '8px',
-    borderRadius: '4px',
-    textAlign: 'left',
-    width: '100%',
   },
-  floorHeader: {
-    fontSize: '18px',
-    marginBottom: '8px',
-    textAlign: 'left',
-  },
-  checkboxGroup: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: '8px',
-    justifyContent: 'flex-start',
-  },
-  checkbox: {
-    marginRight: '16px',
-  },
-  sectionHeader: {
-    marginTop: '16px',
-    marginBottom: '12px',
-    fontSize: '20px',
-    textAlign: 'left',
-  },
-  tabs: {
-    marginBottom: '12px',
-    textAlign: 'left',
-    width: '100%',
-  },
-  tableContainer: {
-    textAlign: 'left',
-    overflowX: 'auto',
-    width: '100%',
-  },
-  table: {
-    width: '100%',
-    textAlign: 'left',
-  },
-  tableInput: {
-    width: '100%',
-  },
-  tableTextarea: {
-    width: '100%',
-    minHeight: '80px',
-  },
-  totalCost: {
-    marginTop: '16px',
-    textAlign: 'left',
-  },
-  totalCostHeader: {
-    fontSize: '18px',
-    fontWeight: '500',
-    textAlign: 'left',
-  },
-  buttonGroup: {
-    marginTop: '16px',
-    display: 'flex',
-    gap: '16px',
-    justifyContent: 'flex-start',
-  },
-  saveButton: {
-    marginLeft: '8px',
-  },
-  loading: {
-    padding: '24px',
-    textAlign: 'left',
-  },
-  error: {
-    padding: '24px',
-    color: '#dc3545',
-    textAlign: 'left',
-  },
+  form: { textAlign: 'left' },
+  floorCard: { border: '1px solid #dee2e6', padding: '12px', marginTop: '8px', borderRadius: '4px', textAlign: 'left', width: '100%' },
+  sectionHeader: { marginTop: '16px', marginBottom: '12px', fontSize: '20px', textAlign: 'left' },
+  tabs: { marginBottom: '12px', textAlign: 'left', width: '100%' },
+  tableContainer: { textAlign: 'left', overflowX: 'auto', width: '100%' },
+  table: { width: '100%', textAlign: 'left' },
+  tableRow: { borderBottom: '1px solid #dee2e6' },
+  tableCell: { padding: '12px 16px', fontSize: '14px', color: '#333', textAlign: 'left' },
+  totalCost: { marginTop: '16px', textAlign: 'left' },
+  totalCostHeader: { fontSize: '18px', fontWeight: '500', textAlign: 'left' },
+  loading: { padding: '24px', textAlign: 'left' },
+  error: { padding: '24px', color: '#dc3545', textAlign: 'left' },
 };
 
 export default EditProject;

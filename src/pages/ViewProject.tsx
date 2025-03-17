@@ -1,123 +1,89 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase'; // Assuming supabase is configured in a separate file
-import { useAuth } from '../lib/auth'; // Assuming useAuth is available
+import { supabase } from '../lib/supabase';
+import { Button, Tabs, Tab } from 'react-bootstrap';
+import { toast } from 'react-toastify';
+import 'bootstrap/dist/css/bootstrap.min.css';
+import 'react-toastify/dist/ReactToastify.css';
 
-interface Floor {
-  floor_number: number;
-  num_apartments: number | null;
-  apartment_types: string[] | null;
+// Interfaces
+interface FormData {
+  projectName: string;
+  startDate: string;
+  endDate: string;
+  totalSquareFeet: string;
+  constructionType: string;
+  numFloors: number;
+  floors: { floorNumber: number; numApartments: number; apartmentTypes: string[] }[];
 }
 
-interface PhaseItem {
+interface PhaseDetail {
   item: string;
-  cost: number | null;
-  attachment: string | null;
+  cost: string;
+  attachment: string;
+  originalFileName: string; // Original file name as uploaded
   status: string;
   completion: string;
   comments: string;
 }
 
-interface Project {
-  id: number;
-  user_id: string;
-  project_name: string;
-  start_date: string | null;
-  end_date: string | null;
-  total_sq_feet: number | null;
-  construction_type: string | null;
-  num_floors: number | null;
-  estimated_cost: number | null;
-  phases: Record<string, { items: PhaseItem[]; percentage: number }> | null;
-  created_at: string;
-}
+// Shorten file name function
+const shortenFileName = (fileName: string, maxLength = 15) => {
+  if (fileName.length <= maxLength) return fileName;
+  const extension = fileName.split('.').pop();
+  const nameWithoutExt = fileName.slice(0, -extension!.length - 1);
+  return `${nameWithoutExt.slice(0, maxLength - 5 - extension!.length)}...${extension}`;
+};
 
 const ViewProject: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { user } = useAuth(); // Assuming useAuth is available
   const navigate = useNavigate();
-  const [project, setProject] = useState<Project | null>(null);
-  const [floors, setFloors] = useState<Floor[]>([]);
-  const [currentPhase, setCurrentPhase] = useState<string>('landPreConstruction');
-  const [loading, setLoading] = useState(true);
+  const [formData, setFormData] = useState<FormData>({
+    projectName: '',
+    startDate: '',
+    endDate: '',
+    totalSquareFeet: '',
+    constructionType: 'Residential',
+    numFloors: 0,
+    floors: [],
+  });
+  const [phases, setPhases] = useState<Record<string, PhaseDetail[]>>({
+    landPreConstruction: [],
+    foundationStructural: [],
+    superstructure: [],
+    internalExternal: [],
+    finalInstallations: [],
+    testingQuality: [],
+    handoverCompletion: [],
+  });
+  const [totalCost, setTotalCost] = useState<number>(0);
+  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [totalCost, setTotalCost] = useState<number>(0); // State for calculated total cost
+  const [canEdit, setCanEdit] = useState<boolean>(false);
 
-  // Define default sub-phases to match EditProject
-  const defaultSubPhases = {
-    landPreConstruction: [
-      'Legal Documentation', 'Title Deed Verification', 'Government Approvals & Permits',
-      'Geotechnical Soil Report', 'Site Survey (Topography & Mapping)', 'Floor Plans & Site Layouts',
-      'Structural Engineering Plans', 'Environmental Clearance', 'Municipality Approvals (Building Permit)',
-      'Fire & Safety Approval', 'Electricity & Water Supply Sanctions', 'Project Cost Estimation & Budgeting',
-      'Contractor Bidding & Tendering', 'Material & Labor Cost Estimation', 'Land Leveling & Clearing',
-      'Temporary Site Office Setup', 'Demolition of Existing Structures',
-    ],
-    foundationStructural: [
-      'Digging & Grading the Site', 'Soil Treatment for Pests & Waterproofing', 'Footings & Pile Foundation',
-      'Concrete Slabs & Columns', 'Reinforced Concrete Plinth', 'Waterproofing & Curing',
-    ],
-    superstructure: [
-      'RCC (Reinforced Concrete Columns & Beams)', 'Slab Construction for Each Floor',
-      'Exterior & Interior Wall Masonry', 'Partition Walls in Apartments', 'Casting of Roof Slabs',
-      'Waterproofing the Roof',
-    ],
-    internalExternal: [
-      'Underground Plumbing & Drainage', 'Electrical Wiring & Ducting Installation',
-      'Air Conditioning & Ventilation Systems', 'Fire Safety Sprinklers & Smoke Detectors',
-      'Interior Wall Plastering', 'Exterior Wall Rendering', 'Main Door, Balcony Doors',
-      'Window Fittings', 'Marble, Tiles, or Wooden Flooring', 'Bathroom & Kitchen Tiling',
-      'Primer & Painting (Interior & Exterior)', 'Textured Finishing for Facade',
-    ],
-    finalInstallations: [
-      'POP False Ceilings & LED Lighting Setup', 'Kitchen & Bathroom Cabinets',
-      'Wardrobes & Storage Units', 'Sink, Faucets, Shower, Toilet Installation',
-      'Drainage & Sewage Connectivity', 'Switchboards, Light Fixtures',
-      'Smart Home Automation (if applicable)',
-    ],
-    testingQuality: [
-      'Bathroom, Kitchen, and Roof Checks', 'Load Testing for Electrical Systems',
-      'Fire Alarm & Safety Compliance Check', 'Fixing Minor Issues Before Handover',
-    ],
-    handoverCompletion: [
-      'Builder Walkthrough with Buyer', 'Final Approval from Authorities', 'Keys Given to Buyer',
-      'Documentation (Occupancy Certificate, Warranty Papers, etc.)', '6-Months to 1-Year Maintenance Period',
-    ],
+  const phaseNameMapping: Record<string, string> = {
+    landPreConstruction: 'Land & Pre-Construction',
+    foundationStructural: 'Foundation & Structural Construction',
+    superstructure: 'Superstructure Construction',
+    internalExternal: 'Internal & External Works',
+    finalInstallations: 'Final Installations',
+    testingQuality: 'Testing & Quality',
+    handoverCompletion: 'Handover & Completion',
   };
-
-  const phaseDefinitions = {
-    landPreConstruction: { name: 'Land & Pre-Construction', subphases: defaultSubPhases.landPreConstruction },
-    foundationStructural: { name: 'Foundation & Structural', subphases: defaultSubPhases.foundationStructural },
-    superstructure: { name: 'Superstructure', subphases: defaultSubPhases.superstructure },
-    internalExternal: { name: 'Internal & External Works', subphases: defaultSubPhases.internalExternal },
-    finalInstallations: { name: 'Final Installations', subphases: defaultSubPhases.finalInstallations },
-    testingQuality: { name: 'Testing & Quality', subphases: defaultSubPhases.testingQuality },
-    handoverCompletion: { name: 'Handover & Completion', subphases: defaultSubPhases.handoverCompletion },
-  };
-
-  // Define the fixed order of phases
-  const phaseOrder = [
-    'landPreConstruction',
-    'foundationStructural',
-    'superstructure',
-    'internalExternal',
-    'finalInstallations',
-    'testingQuality',
-    'handoverCompletion',
-  ];
 
   useEffect(() => {
     const fetchProject = async () => {
-      try {
-        if (!user || !user.id || !id) {
-          throw new Error('User not authenticated or project ID missing');
-        }
+      if (!id) {
+        setError('Project ID is missing');
+        setLoading(false);
+        return;
+      }
 
+      try {
         const { data: projectData, error: projectError } = await supabase
           .from('project_users')
           .select('*')
           .eq('id', id)
-          .eq('user_id', user.id)
           .single();
 
         if (projectError) throw projectError;
@@ -137,209 +103,266 @@ const ViewProject: React.FC = () => {
 
         if (phaseError) throw phaseError;
 
-        // Initialize phases with default sub-phases to ensure all are present
-        const updatedPhases: Record<string, { items: PhaseItem[]; percentage: number }> = {};
-        phaseOrder.forEach((phaseKey) => {
-          updatedPhases[phaseKey] = {
-            items: defaultSubPhases[phaseKey as keyof typeof defaultSubPhases].map((item) => ({
-              item,
-              cost: null,
-              attachment: null,
-              status: 'Pending',
-              completion: '0',
-              comments: '',
-            })),
-            percentage: 0,
-          };
+        setFormData({
+          projectName: projectData.project_name || '',
+          startDate: projectData.start_date || '',
+          endDate: projectData.end_date || '',
+          totalSquareFeet: projectData.total_sq_feet ? String(projectData.total_sq_feet) : '',
+          constructionType: projectData.construction_type || 'Residential',
+          numFloors: projectData.num_floors || 0,
+          floors: floorsData?.map((floor: any) => ({
+            floorNumber: floor.floor_number,
+            numApartments: floor.num_apartments || 0,
+            apartmentTypes: floor.apartment_types || [],
+          })) || [],
         });
 
-        // Merge with saved phase data
+        const phaseMap: Record<string, PhaseDetail[]> = {};
         if (phaseData && phaseData.length > 0) {
           phaseData.forEach((phase: any) => {
-            const phaseKey = phaseOrder.find(
-              (key) => phaseDefinitions[key as keyof typeof phaseDefinitions].name === phase.phase_name
+            const phaseKey = Object.keys(phaseNameMapping).find(
+              (key) => phaseNameMapping[key] === phase.phase_name
             );
-            if (phaseKey && phase.items && phase.items.length > 0) {
-              const savedItemsMap = new Map(
-                phase.items.map((item: any) => [
-                  item.item,
-                  {
-                    item: item.item || '',
-                    cost: item.cost || null,
-                    attachment: item.attachment || null,
-                    status: item.status || 'Pending',
-                    completion: item.completion || '0',
-                    comments: item.comments || '',
-                  },
-                ])
-              );
-              updatedPhases[phaseKey].items = defaultSubPhases[phaseKey as keyof typeof defaultSubPhases].map(
-                (defaultItem) => savedItemsMap.get(defaultItem) || {
-                  item: defaultItem,
-                  cost: null,
-                  attachment: null,
-                  status: 'Pending',
-                  completion: '0',
-                  comments: '',
-                }
-              );
-              updatedPhases[phaseKey].percentage = phase.percentage || 0;
+            if (phaseKey && phase.items) {
+              phaseMap[phaseKey] = phase.items.map((item: any) => ({
+                item: item.item || '',
+                cost: item.cost ? String(item.cost) : '',
+                attachment: item.attachment || '',
+                originalFileName: item.originalFileName || '',
+                status: item.status || 'Pending',
+                completion: item.completion ? String(item.completion) : '0',
+                comments: item.comments || '',
+              }));
             }
           });
         }
 
-        // Calculate total cost from all phases
-        const calculatedTotalCost = Object.values(updatedPhases).reduce((total, phase) => {
-          const phaseTotal = phase.items.reduce((sum, item) => {
-            const costValue = item.cost ? parseInt(item.cost.toString()) : 0;
-            return sum + costValue;
-          }, 0);
-          return total + phaseTotal;
-        }, 0);
+        setPhases((prev) => ({ ...prev, ...phaseMap }));
+        setTotalCost(calculateTotalCost(phaseMap));
 
-        setTotalCost(calculatedTotalCost);
-
-        setProject({
-          ...projectData,
-          phases: updatedPhases,
-        } as Project);
-
-        setFloors(floorsData || []);
+        const { data: { user } } = await supabase.auth.getUser();
+        setCanEdit(!!user);
       } catch (error) {
         console.error('Error fetching project:', error);
-        setError(error instanceof Error ? error.message : 'Unknown error');
+        setError(`Failed to fetch project: ${(error as Error).message || 'Unknown error'}`);
       } finally {
         setLoading(false);
       }
     };
 
     fetchProject();
-  }, [user, id]);
+  }, [id]);
 
-  if (loading) {
-    return <div className="p-6">Loading project details...</div>;
-  }
+  const calculateTotalCost = (phaseData: Record<string, PhaseDetail[]>): number => {
+    return Object.values(phaseData).reduce((total, phaseDetails) => {
+      const phaseTotal = phaseDetails.reduce((sum, detail) => {
+        const costValue = parseInt(detail.cost) || 0;
+        return sum + costValue;
+      }, 0);
+      return total + phaseTotal;
+    }, 0);
+  };
 
-  if (error || !project) {
-    return <div className="p-6 text-red-600">{error || 'Project not found'}</div>;
-  }
+  const handleRemoveFile = async (phaseName: string, index: number) => {
+    if (!canEdit) {
+      toast.error('You do not have permission to remove files');
+      return;
+    }
 
-  const currentPhaseKey = phaseOrder.find((key) => key === currentPhase) || 'landPreConstruction';
-  const phaseItems = project.phases?.[currentPhaseKey]?.items || [];
+    const attachment = phases[phaseName][index].attachment;
+    if (!attachment || !id) {
+      toast.error('No file to remove or project ID missing');
+      return;
+    }
 
-  console.log('Rendering ViewProject with phaseItems:', phaseItems); // Debug log
+    try {
+      const filePath = attachment.split('/project-files/')[1];
+      const { error: deleteError } = await supabase.storage
+        .from('project-files')
+        .remove([filePath]);
+
+      if (deleteError) {
+        console.error('Remove error:', deleteError);
+        throw new Error(`Remove failed: ${deleteError.message}`);
+      }
+
+      const updatedPhases = { ...phases };
+      updatedPhases[phaseName][index].attachment = '';
+      updatedPhases[phaseName][index].originalFileName = '';
+      setPhases(updatedPhases);
+
+      await supabase
+        .from('project_phases')
+        .update({
+          items: updatedPhases[phaseName].map((detail) => ({
+            item: detail.item,
+            cost: detail.cost ? parseInt(detail.cost) : null,
+            attachment: detail.attachment || null,
+            originalFileName: detail.originalFileName || null,
+            status: detail.status || 'Pending',
+            completion: detail.completion || '0',
+            comments: detail.comments || null,
+          })),
+        })
+        .eq('project_id', id)
+        .eq('phase_name', phaseNameMapping[phaseName]);
+
+      toast.success('File removed successfully!');
+    } catch (error) {
+      console.error('Error removing file:', error);
+      toast.error(`Failed to remove file: ${(error as Error).message || 'Unknown error'}`);
+    }
+  };
+
+  if (loading) return <div style={styles.loading}>Loading project...</div>;
+  if (error) return <div style={styles.error}>{error}</div>;
 
   return (
-    <div className="p-6 bg-gray-100 min-h-screen">
-      {/* Project Overview */}
-      <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <h2 className="text-2xl font-bold text-blue-600 mb-4">{project.project_name}</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <p className="text-gray-700"><strong>Start Date:</strong> {project.start_date || 'Not set'}</p>
-            <p className="text-gray-700"><strong>End Date:</strong> {project.end_date || 'Not set'}</p>
-            <p className="text-gray-700"><strong>Estimated Cost (INR):</strong> {project.estimated_cost ? `₹${project.estimated_cost.toLocaleString()}` : 'Not set'}</p>
-            <p className="text-gray-700"><strong>Total Cost (INR):</strong> {totalCost ? `₹${totalCost.toLocaleString()}` : 'Not set'}</p>
-          </div>
-          <div>
-            <p className="text-gray-700"><strong>Construction Type:</strong> {project.construction_type || 'Not set'}</p>
-            <p className="text-gray-700"><strong>Total Sq. Feet:</strong> {project.total_sq_feet ? project.total_sq_feet.toLocaleString() : 'Not set'}</p>
-            <p className="text-gray-700"><strong>Number of Floors:</strong> {project.num_floors || 'Not set'}</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Floor Details */}
-      {project.construction_type === 'Residential' && floors.length > 0 && (
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <h3 className="text-lg font-medium text-blue-500 mb-4">Floor Details</h3>
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="bg-gray-200 text-gray-700">
-                <th className="px-4 py-2 text-left">Floor Number</th>
-                <th className="px-4 py-2 text-left">Number of Apartments</th>
-                <th className="px-4 py-2 text-left">Apartment Types</th>
-              </tr>
-            </thead>
-            <tbody>
-              {floors.map((floor, index) => (
-                <tr key={index} className="border-b">
-                  <td className="px-4 py-2">{floor.floor_number}</td>
-                  <td className="px-4 py-2">{floor.num_apartments || '0'}</td>
-                  <td className="px-4 py-2">{floor.apartment_types?.join(', ') || 'None'}</td>
-                </tr>
+    <div style={styles.container}>
+      <h2 style={styles.header}>View Project: {formData.projectName}</h2>
+      <div style={styles.card}>
+        <div style={styles.form}>
+          <p><strong>Project Name:</strong> {formData.projectName}</p>
+          <p><strong>Start Date:</strong> {formData.startDate || 'N/A'}</p>
+          <p><strong>End Date:</strong> {formData.endDate || 'N/A'}</p>
+          <p><strong>Total Square Feet:</strong> {formData.totalSquareFeet || 'N/A'}</p>
+          <p><strong>Construction Type:</strong> {formData.constructionType}</p>
+          {formData.constructionType === 'Residential' && (
+            <>
+              <p><strong>Number of Floors:</strong> {formData.numFloors}</p>
+              {formData.floors.map((floor) => (
+                <div key={floor.floorNumber} style={styles.floorCard}>
+                  <h5>Floor {floor.floorNumber}</h5>
+                  <p><strong>Number of Apartments:</strong> {floor.numApartments}</p>
+                  <p><strong>Apartment Types:</strong> {floor.apartmentTypes.join(', ') || 'None'}</p>
+                </div>
               ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+            </>
+          )}
 
-      {/* Phase Navigation Tabs */}
-      <div className="flex space-x-2 mb-4 overflow-x-auto">
-        {phaseOrder.map((phaseKey, index) => (
-          <button
-            key={phaseKey}
-            className={`px-4 py-2 rounded-md whitespace-nowrap ${
-              currentPhase === phaseKey ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
-            }`}
-            onClick={() => setCurrentPhase(phaseKey)}
-          >
-            {index + 1}. {phaseDefinitions[phaseKey].name}
-          </button>
-        ))}
-      </div>
-
-      {/* Phase Details */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-lg font-medium text-blue-500 mb-4">{phaseDefinitions[currentPhaseKey].name} Phase</h3>
-        <div className="mb-4">
-          <strong>Phase Completion:</strong> {project.phases?.[currentPhaseKey]?.percentage || 0}%
-        </div>
-
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className="bg-gray-200 text-gray-700"> {/* Changed from bg-black to bg-gray-200 */}
-              <th className="px-4 py-2">Item</th>
-              <th className="px-4 py-2">Cost (INR)</th>
-              <th className="px-4 py-2">Attachment</th>
-              <th className="px-4 py-2">Status</th>
-              <th className="px-4 py-2">% Completion</th>
-              <th className="px-4 py-2">Comments</th>
-            </tr>
-          </thead>
-          <tbody>
-            {phaseItems.map((item, index) => (
-              <tr key={index} className="border-b">
-                <td className="px-4 py-2">{item.item}</td>
-                <td className="px-4 py-2">{item.cost ? `₹${item.cost.toLocaleString()}` : 'N/A'}</td>
-                <td className="px-4 py-2">
-                  {item.attachment ? (
-                    <a href={item.attachment} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                      View
-                    </a>
-                  ) : 'N/A'}
-                </td>
-                <td className="px-4 py-2">{item.status || 'N/A'}</td>
-                <td className="px-4 py-2">{item.completion || '0'}%</td>
-                <td className="px-4 py-2">{item.comments || 'N/A'}</td>
-              </tr>
+          <h4 style={styles.sectionHeader}>Phase Details</h4>
+          <Tabs defaultActiveKey="landPreConstruction" id="phase-tabs" style={styles.tabs}>
+            {Object.keys(phases).map((phaseKey) => (
+              <Tab
+                key={phaseKey}
+                eventKey={phaseKey}
+                title={`${Object.keys(phaseNameMapping).indexOf(phaseKey) + 1}. ${phaseNameMapping[phaseKey]}`}
+              >
+                <PhaseTable
+                  phaseName={phaseKey}
+                  phaseDetails={phases[phaseKey]}
+                  onRemoveFile={canEdit ? handleRemoveFile : undefined}
+                />
+              </Tab>
             ))}
-          </tbody>
-        </table>
+          </Tabs>
 
-        <div className="mt-4 flex space-x-4">
-          <button
-            onClick={() => navigate('/builder/dashboard/projects')}
-            className="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600"
-          >
-            Back
-          </button>
+          <div style={styles.totalCost}>
+            <h4 style={styles.totalCostHeader}>Total Project Cost: ₹{totalCost.toLocaleString()}</h4>
+          </div>
+
+          <Button variant="primary" onClick={() => navigate('/builder/dashboard/projects')}>
+            Back to Projects
+          </Button>
+          {canEdit && (
+            <Button
+              variant="secondary"
+              style={{ marginLeft: '10px' }}
+              onClick={() => navigate(`/builder/dashboard/projects/edit/${id}`)}
+            >
+              Edit Project
+            </Button>
+          )}
         </div>
-
-        {error && <div className="mt-4 text-red-600">{error}</div>}
       </div>
     </div>
   );
+};
+
+const PhaseTable: React.FC<{
+  phaseName: string;
+  phaseDetails: PhaseDetail[];
+  onRemoveFile?: (phaseName: string, index: number) => void;
+}> = ({ phaseName, phaseDetails, onRemoveFile }) => {
+  return (
+    <div style={styles.tableContainer}>
+      <table className="table table-bordered" style={styles.table}>
+        <thead>
+          <tr>
+            <th style={styles.tableCell}>Task</th>
+            <th style={styles.tableCell}>Cost (INR)</th>
+            <th style={styles.tableCell}>Attachment</th>
+            <th style={styles.tableCell}>Status</th>
+            <th style={styles.tableCell}>% Completion</th>
+            <th style={styles.tableCell}>Comments</th>
+          </tr>
+        </thead>
+        <tbody>
+          {phaseDetails.map((detail, index) => (
+            <tr key={index} style={styles.tableRow}>
+              <td style={styles.tableCell}>{detail.item}</td>
+              <td style={styles.tableCell}>{detail.cost || '0'}</td>
+              <td style={styles.tableCell}>
+                {detail.attachment ? (
+                  <div>
+                    <a
+                      href={detail.attachment}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ color: '#007bff', textDecoration: 'underline' }}
+                    >
+                      {shortenFileName(detail.originalFileName)}
+                    </a>
+                    {onRemoveFile && (
+                      <Button
+                        variant="link"
+                        style={{ color: 'red', marginLeft: '10px' }}
+                        onClick={() => onRemoveFile(phaseName, index)}
+                      >
+                        Remove
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  'No attachment'
+                )}
+              </td>
+              <td style={styles.tableCell}>{detail.status || 'Pending'}</td>
+              <td style={styles.tableCell}>{detail.completion || '0'}%</td>
+              <td style={styles.tableCell}>{detail.comments || 'N/A'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
+// Inline styles (unchanged)
+const styles: { [key: string]: React.CSSProperties } = {
+  container: { padding: '24px', textAlign: 'left', width: '100%', margin: '0' },
+  header: { fontSize: '24px', fontWeight: 'bold', marginBottom: '24px', textAlign: 'left' },
+  card: {
+    backgroundColor: '#fff',
+    padding: '16px',
+    borderRadius: '8px',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+    width: '100%',
+    boxSizing: 'border-box',
+    border: '1px solid #dee2e6',
+  },
+  form: { textAlign: 'left' },
+  floorCard: { border: '1px solid #dee2e6', padding: '12px', marginTop: '8px', borderRadius: '4px', textAlign: 'left', width: '100%' },
+  sectionHeader: { marginTop: '16px', marginBottom: '12px', fontSize: '20px', textAlign: 'left' },
+  tabs: { marginBottom: '12px', textAlign: 'left', width: '100%' },
+  tableContainer: { textAlign: 'left', overflowX: 'auto', width: '100%' },
+  table: { width: '100%', textAlign: 'left' },
+  tableRow: { borderBottom: '1px solid #dee2e6' },
+  tableCell: { padding: '12px 16px', fontSize: '14px', color: '#333', textAlign: 'left' },
+  totalCost: { marginTop: '16px', textAlign: 'left' },
+  totalCostHeader: { fontSize: '18px', fontWeight: '500', textAlign: 'left' },
+  loading: { padding: '24px', textAlign: 'left' },
+  error: { padding: '24px', color: '#dc3545', textAlign: 'left' },
 };
 
 export default ViewProject;

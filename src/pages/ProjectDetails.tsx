@@ -13,7 +13,14 @@ interface Phase {
   phase_name: string;
   enabled: boolean;
   percentage: number;
-  items: Array<{ item: string; cost: number | null; attachment: string | null; status: string; completion: string; comments: string }>;
+  items: Array<{
+    item: string;
+    cost: number | null;
+    attachment: string | null;
+    status: string;
+    completion: string;
+    comments: string;
+  }>;
 }
 
 interface Floor {
@@ -37,14 +44,19 @@ interface Project {
   created_at: string;
 }
 
+interface AuthContextUser {
+  id: string;
+  // Add other user properties as needed
+}
+
 const ProjectDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { user } = useAuth();
+  const { user } = useAuth() as { user: AuthContextUser | null }; // Ensure proper typing for useAuth
   const navigate = useNavigate();
   const [project, setProject] = useState<Project | null>(null);
   const [phases, setPhases] = useState<Phase[]>([]);
   const [floors, setFloors] = useState<Floor[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPhase, setCurrentPhase] = useState<string>('Land & Pre-Construction');
 
@@ -67,7 +79,7 @@ const ProjectDetails: React.FC = () => {
 
         if (!projectData) throw new Error('Project not found');
 
-        setProject(projectData);
+        setProject(projectData as Project);
 
         // Fetch phases
         const { data: phasesData, error: phasesError } = await supabase
@@ -99,56 +111,58 @@ const ProjectDetails: React.FC = () => {
     fetchProjectAndPhases();
   }, [user, id]);
 
-  const handlePhaseChange = (phaseName: string) => {
+  const handlePhaseChange = (phaseName: string): void => {
     setCurrentPhase(phaseName);
   };
 
   if (loading) {
-    return <div className="p-6">Loading project details...</div>;
+    return <div style={styles.loading}>Loading project details...</div>;
   }
 
   if (error || !project) {
-    return <div className="p-6 text-red-600">{error || 'Project not found'}</div>;
+    return <div style={styles.error}>{error || 'Project not found'}</div>;
   }
 
   const currentPhaseData = phases.find((phase) => phase.phase_name === currentPhase);
   const phaseItems = currentPhaseData?.items || [];
 
   return (
-    <div className="p-6 bg-gray-100 min-h-screen">
+    <div style={styles.container}>
       {/* Project Overview */}
-      <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">{project.project_name}</h2>
-        <p className="text-sm text-gray-600">Start Date: {project.start_date || 'Not set'}</p>
-        <p className="text-sm text-gray-600">End Date: {project.end_date || 'Not set'}</p>
-        <p className="text-sm text-gray-600">
-          Estimated Cost: {project.estimated_cost ? `₹${project.estimated_cost.toLocaleString()}` : 'Not set'}
-        </p>
-        <p className="text-sm text-gray-600">Construction Type: {project.construction_type || 'Not set'}</p>
-        <p className="text-sm text-gray-600">
-          Total Sq. Feet: {project.total_sq_feet ? project.total_sq_feet.toLocaleString() : 'Not set'}
-        </p>
-        <p className="text-sm text-gray-600">Number of Floors: {project.num_floors || 'Not set'}</p>
+      <div style={styles.card}>
+        <h2 style={styles.header}>{project.project_name}</h2>
+        <div style={styles.projectDetails}>
+          <p style={styles.detailText}><strong>Start Date:</strong> {project.start_date || 'Not set'}</p>
+          <p style={styles.detailText}><strong>End Date:</strong> {project.end_date || 'Not set'}</p>
+          <p style={styles.detailText}>
+            <strong>Estimated Cost:</strong> {project.estimated_cost ? `₹${project.estimated_cost.toLocaleString()}` : 'Not set'}
+          </p>
+          <p style={styles.detailText}><strong>Construction Type:</strong> {project.construction_type || 'Not set'}</p>
+          <p style={styles.detailText}>
+            <strong>Total Sq. Feet:</strong> {project.total_sq_feet ? project.total_sq_feet.toLocaleString() : 'Not set'}
+          </p>
+          <p style={styles.detailText}><strong>Number of Floors:</strong> {project.num_floors || 'Not set'}</p>
+        </div>
       </div>
 
       {/* Floor Details */}
       {floors.length > 0 && (
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Floor Details</h3>
-          <table className="w-full border-collapse">
+        <div style={styles.card}>
+          <h3 style={styles.sectionHeader}>Floor Details</h3>
+          <table style={styles.table}>
             <thead>
-              <tr className="bg-gray-200 text-gray-700">
-                <th className="px-4 py-2 text-left">Floor Number</th>
-                <th className="px-4 py-2 text-left">Number of Apartments</th>
-                <th className="px-4 py-2 text-left">Apartment Types</th>
+              <tr style={styles.tableHeader}>
+                <th style={styles.tableCell}>Floor Number</th>
+                <th style={styles.tableCell}>Number of Apartments</th>
+                <th style={styles.tableCell}>Apartment Types</th>
               </tr>
             </thead>
             <tbody>
               {floors.map((floor) => (
-                <tr key={floor.id} className="border-b">
-                  <td className="px-4 py-2">{floor.floor_number}</td>
-                  <td className="px-4 py-2">{floor.num_apartments || 'Not set'}</td>
-                  <td className="px-4 py-2">{floor.apartment_types?.join(', ') || 'Not set'}</td>
+                <tr key={floor.id} style={styles.tableRow}>
+                  <td style={styles.tableCell}>{floor.floor_number}</td>
+                  <td style={styles.tableCell}>{floor.num_apartments || 'Not set'}</td>
+                  <td style={styles.tableCell}>{floor.apartment_types?.join(', ') || 'Not set'}</td>
                 </tr>
               ))}
             </tbody>
@@ -157,13 +171,14 @@ const ProjectDetails: React.FC = () => {
       )}
 
       {/* Phase Navigation Tabs */}
-      <div className="flex space-x-2 mb-4 flex-wrap">
+      <div style={styles.tabs}>
         {phases.map((phase, index) => (
           <button
             key={phase.id}
-            className={`px-4 py-2 rounded-md mb-2 ${
-              phase.phase_name === currentPhase ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
-            }`}
+            style={{
+              ...styles.tabButton,
+              ...(phase.phase_name === currentPhase ? styles.activeTab : styles.inactiveTab),
+            }}
             onClick={() => handlePhaseChange(phase.phase_name)}
           >
             {index + 1}. {phase.phase_name}
@@ -172,83 +187,166 @@ const ProjectDetails: React.FC = () => {
       </div>
 
       {/* Phase Details */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-2xl font-bold text-blue-600 mb-4">
+      <div style={styles.card}>
+        <h2 style={styles.sectionHeader}>
           {phases.findIndex((phase) => phase.phase_name === currentPhase) + 1}. {currentPhase} Phase
         </h2>
-        <h3 className="text-lg font-medium text-blue-500 mb-2">
+        <h3 style={styles.subSectionHeader}>
           {currentPhase === 'Land & Pre-Construction' ? 'a) Land Acquisition & Verification' : 'Details'}
         </h3>
 
-        <table className="w-full border-collapse">
+        <table style={styles.table}>
           <thead>
-            <tr className="bg-blue-600 text-white"> {/* Changed from bg-black to bg-blue-600 */}
-              <th className="px-4 py-2">Item</th>
-              <th className="px-4 py-2">Cost (INR)</th>
-              <th className="px-4 py-2">Attachment</th>
-              <th className="px-4 py-2">Status</th>
-              <th className="px-4 py-2">%</th>
-              <th className="px-4 py-2">Comments</th>
+            <tr style={styles.tableHeader}>
+              <th style={styles.tableCell}>Item</th>
+              <th style={styles.tableCell}>Cost (INR)</th>
+              <th style={styles.tableCell}>Attachment</th>
+              <th style={styles.tableCell}>Status</th>
+              <th style={styles.tableCell}>% Completion</th>
+              <th style={styles.tableCell}>Comments</th>
             </tr>
           </thead>
           <tbody>
             {phaseItems.map((item, index) => (
-              <tr key={index} className="border-b">
-                <td className="px-4 py-2">{item.item}</td>
-                <td className="px-4 py-2">
-                  <input
-                    type="number"
-                    value={item.cost || ''}
-                    onChange={(e) => console.log(`Update cost for ${item.item}: ${e.target.value}`)}
-                    className="w-full p-1 border rounded"
-                    disabled
-                  />
+              <tr key={index} style={styles.tableRow}>
+                <td style={styles.tableCell}>{item.item}</td>
+                <td style={styles.tableCell}>{item.cost ? `₹${item.cost.toLocaleString()}` : 'N/A'}</td>
+                <td style={styles.tableCell}>
+                  {item.attachment ? item.attachment : 'No file chosen'}
                 </td>
-                <td className="px-4 py-2">
-                  <input
-                    type="file"
-                    onChange={(e) => console.log(`Upload file for ${item.item}:`, e.target.files?.[0])}
-                    className="w-full p-1 border rounded"
-                  />
-                  {item.attachment ? 'File attached' : 'No file chosen'}
-                </td>
-                <td className="px-4 py-2">
-                  <select
-                    value={item.status}
-                    onChange={(e) => console.log(`Update status for ${item.item}: ${e.target.value}`)}
-                    className="w-full p-1 border rounded"
-                    disabled
-                  >
-                    <option value="Pending">Pending</option>
-                    <option value="In Progress">In Progress</option>
-                    <option value="Completed">Completed</option>
-                  </select>
-                </td>
-                <td className="px-4 py-2">
-                  <input
-                    type="number"
-                    value={item.completion}
-                    onChange={(e) => console.log(`Update completion for ${item.item}: ${e.target.value}`)}
-                    className="w-full p-1 border rounded"
-                    disabled
-                  />
-                </td>
-                <td className="px-4 py-2">
-                  <input
-                    type="text"
-                    value={item.comments || ''}
-                    onChange={(e) => console.log(`Update comments for ${item.item}: ${e.target.value}`)}
-                    className="w-full p-1 border rounded"
-                    disabled
-                  />
-                </td>
+                <td style={styles.tableCell}>{item.status || 'Pending'}</td>
+                <td style={styles.tableCell}>{item.completion || '0'}</td>
+                <td style={styles.tableCell}>{item.comments || ''}</td>
               </tr>
             ))}
           </tbody>
         </table>
+
+        <div style={styles.buttonGroup}>
+          <button
+            onClick={() => navigate('/builder/dashboard/projects')}
+            style={styles.backButton}
+          >
+            Back
+          </button>
+        </div>
       </div>
     </div>
   );
+};
+
+// Inline styles for left alignment and design consistency
+const styles: { [key: string]: React.CSSProperties } = {
+  container: {
+    padding: '24px',
+    textAlign: 'left',
+    width: '100%',
+    margin: '0',
+  },
+  header: {
+    fontSize: '24px',
+    fontWeight: 'bold',
+    marginBottom: '16px',
+    textAlign: 'left',
+    color: '#1f2937',
+  },
+  card: {
+    backgroundColor: '#fff',
+    padding: '16px',
+    borderRadius: '8px',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+    marginBottom: '24px',
+    width: '100%',
+    boxSizing: 'border-box',
+    border: '1px solid #dee2e6',
+  },
+  projectDetails: {
+    display: 'block',
+  },
+  detailText: {
+    fontSize: '16px',
+    color: '#333',
+    marginBottom: '8px',
+    textAlign: 'left',
+  },
+  sectionHeader: {
+    fontSize: '20px',
+    fontWeight: '500',
+    marginBottom: '16px',
+    textAlign: 'left',
+    color: '#1f2937',
+  },
+  subSectionHeader: {
+    fontSize: '16px',
+    fontWeight: '500',
+    marginBottom: '12px',
+    textAlign: 'left',
+    color: '#1f2937',
+  },
+  table: {
+    width: '100%',
+    borderCollapse: 'collapse',
+    textAlign: 'left',
+  },
+  tableHeader: {
+    backgroundColor: '#f1f5f9',
+    color: '#333',
+  },
+  tableRow: {
+    borderBottom: '1px solid #dee2e6',
+  },
+  tableCell: {
+    padding: '12px 16px',
+    fontSize: '14px',
+    color: '#333',
+    textAlign: 'left',
+  },
+  tabs: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '8px',
+    marginBottom: '24px',
+    overflowX: 'auto',
+  },
+  tabButton: {
+    padding: '8px 16px',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontSize: '14px',
+    whiteSpace: 'nowrap',
+  },
+  activeTab: {
+    backgroundColor: '#3b82f6',
+    color: '#fff',
+  },
+  inactiveTab: {
+    backgroundColor: '#e5e7eb',
+    color: '#374151',
+  },
+  buttonGroup: {
+    marginTop: '16px',
+    display: 'flex',
+    gap: '16px',
+    justifyContent: 'flex-start',
+  },
+  backButton: {
+    backgroundColor: '#6b7280',
+    color: '#fff',
+    padding: '8px 16px',
+    borderRadius: '4px',
+    border: 'none',
+    cursor: 'pointer',
+  },
+  loading: {
+    padding: '24px',
+    textAlign: 'left',
+    color: '#6b7280',
+  },
+  error: {
+    padding: '24px',
+    color: '#dc3545',
+    textAlign: 'left',
+  },
 };
 
 export default ProjectDetails;

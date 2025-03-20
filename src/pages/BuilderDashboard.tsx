@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, useNavigate, Navigate, Link } from 'react-router-dom';
+import { Routes, Route, useNavigate, Navigate, Link, useLocation } from 'react-router-dom';
 import { 
   Building2, Search, Bell, User, LogOut, Settings as SettingsIcon, 
   HelpCircle, Plus, Home, BarChart3, FileText, Users, Calendar 
@@ -34,6 +34,7 @@ interface FormData {
 const BuilderDashboard: React.FC = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation(); // Added to track current route
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -278,6 +279,12 @@ const BuilderDashboard: React.FC = () => {
     return currentPath.startsWith(path) ? 'bg-blue-700' : 'hover:bg-blue-700';
   };
 
+  // Check if the "New Project" button should be shown
+  const showNewProjectButton = () => {
+    const currentPath = location.pathname;
+    return currentPath === '/builder/dashboard' || currentPath === '/builder/dashboard/projects';
+  };
+
   if (!user) {
     return <Navigate to="/" replace />;
   }
@@ -314,7 +321,7 @@ const BuilderDashboard: React.FC = () => {
             </Link>
           </div>
           <div className="px-4 mt-8 pt-6 border-t border-blue-700">
-            <Link to="/builder/dashboard/settings" className={`flex items-center px-4 py-2 text-white rounded-md ${getActiveClass('/builder/dashboard/settings')}`}>
+            <Link to="/builder/dashboard/settings" className={`flex items-center px-4 py-2 text-white rounded-md ${getActiveClass('/builder/dashboard/#')}`}>
               <SettingsIcon className="h-5 w-5 mr-3" />
               Settings
             </Link>
@@ -387,15 +394,18 @@ const BuilderDashboard: React.FC = () => {
               </div>
             </div>
           </div>
-          <div className="px-4 py-3 border-t border-gray-200 flex justify-center">
-            <button 
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md flex items-center"
-              onClick={handleOpenModal}
-            >
-              <Plus className="w-5 h-5 mr-2" />
-              New Project
-            </button>
-          </div>
+          {/* Conditionally render New Project button */}
+          {showNewProjectButton() && (
+            <div className="px-4 py-3 border-t border-gray-200 flex justify-center">
+              <button 
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md flex items-center"
+                onClick={handleOpenModal}
+              >
+                <Plus className="w-5 h-5 mr-2" />
+                New Project
+              </button>
+            </div>
+          )}
         </header>
 
         {/* Main Content Area */}
@@ -411,7 +421,6 @@ const BuilderDashboard: React.FC = () => {
             <Route path="/projects/:id" element={<ProjectDetails />} />
             <Route path="/projects/edit/:id" element={<EditProject />} />
             <Route path="/finance" element={<Finance />} />
-            <Route path="/settings" element={<SettingsPage />} />
             <Route path="/help" element={<Help />} />
             <Route path="*" element={<Navigate to="/builder/dashboard" replace />} />
           </Routes>
@@ -717,89 +726,6 @@ const Overview = () => (
           </div>
         ))}
       </div>
-    </div>
-  </div>
-);
-
-const SettingsPage = () => (
-  <div className="p-6">
-    <h2 className="text-2xl font-bold mb-6">Account Settings</h2>
-    <div className="bg-white rounded-lg shadow p-6">
-      <form className="space-y-6">
-        <div>
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Profile Information</h3>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Full Name</label>
-              <input 
-                type="text" 
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" 
-                defaultValue="John Doe" 
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Business Name</label>
-              <input 
-                type="text" 
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" 
-                defaultValue="Doe Construction LLC" 
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Email</label>
-              <input 
-                type="email" 
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" 
-                defaultValue="john@example.com" 
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Phone</label>
-              <input 
-                type="tel" 
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" 
-                defaultValue="+1 (555) 000-0000" 
-              />
-            </div>
-          </div>
-        </div>
-        
-        <div>
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Change Password</h3>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Current Password</label>
-              <input 
-                type="password" 
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" 
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">New Password</label>
-              <input 
-                type="password" 
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" 
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Confirm New Password</label>
-              <input 
-                type="password" 
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" 
-              />
-            </div>
-          </div>
-        </div>
-        
-        <div>
-          <button 
-            type="submit" 
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md"
-          >
-            Save Changes
-          </button>
-        </div>
-      </form>
     </div>
   </div>
 );

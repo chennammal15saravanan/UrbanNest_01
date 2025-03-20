@@ -21,7 +21,7 @@ interface PhaseDetail {
   item: string;
   cost: string;
   attachment: string;
-  originalFileName: string; // Original file name as uploaded
+  originalFileName: string;
   status: string;
   completion: string;
   comments: string;
@@ -214,6 +214,45 @@ const ViewProject: React.FC = () => {
     }
   };
 
+  const handleDownloadPDF = async () => {
+    if (!id) {
+      toast.error('Project ID is missing');
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.functions.invoke('generateProjectPDF', {
+        body: { id },
+        responseType: 'blob',
+      });
+
+      if (error) {
+        console.error('Supabase function error:', error);
+        throw new Error(`PDF generation failed: ${error.message}`);
+      }
+
+      if (!data) {
+        throw new Error('No data returned from PDF generation');
+      }
+
+      const blob = new Blob([data], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${formData.projectName || 'project'}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast.success('PDF downloaded successfully!');
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast.error(`Failed to download PDF: ${(error as Error).message || 'Unknown error'}`);
+    }
+  };
+
   if (loading) return <div style={styles.loading}>Loading project...</div>;
   if (error) return <div style={styles.error}>{error}</div>;
 
@@ -273,6 +312,13 @@ const ViewProject: React.FC = () => {
               Edit Project
             </Button>
           )}
+          <Button
+            variant="success"
+            style={{ marginLeft: '10px' }}
+            onClick={handleDownloadPDF}
+          >
+            Download PDF
+          </Button>
         </div>
       </div>
     </div>
@@ -338,7 +384,7 @@ const PhaseTable: React.FC<{
   );
 };
 
-// Inline styles (unchanged)
+// Inline styles
 const styles: { [key: string]: React.CSSProperties } = {
   container: { padding: '24px', textAlign: 'left', width: '100%', margin: '0' },
   header: { fontSize: '24px', fontWeight: 'bold', marginBottom: '24px', textAlign: 'left' },
@@ -360,7 +406,7 @@ const styles: { [key: string]: React.CSSProperties } = {
   tableRow: { borderBottom: '1px solid #dee2e6' },
   tableCell: { padding: '12px 16px', fontSize: '14px', color: '#333', textAlign: 'left' },
   totalCost: { marginTop: '16px', textAlign: 'left' },
-  totalCostHeader: { fontSize: '18px', fontWeight: '500', textAlign: 'left' },
+  totalCostHeader: { fontSize: '18px', fontWeight: 500, textAlign: 'left' },
   loading: { padding: '24px', textAlign: 'left' },
   error: { padding: '24px', color: '#dc3545', textAlign: 'left' },
 };
